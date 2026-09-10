@@ -4,15 +4,15 @@
 ===========================================================
  SYNC
  Frontend application logic
+ Versione completa frontend + collegamento Worker
 ===========================================================
 */
 
-/* =========================================================
-   CONFIG
-========================================================= */
+const SYNC_WORKER_URL =
+    "https://sync2.astengoedoardo.workers.dev";
 
 const SYNC = {
-    version: "1.0.0",
+    version: "1.1.0",
 
     languages: ["it", "en", "es", "fr"],
 
@@ -20,8 +20,12 @@ const SYNC = {
         currentPage: "home",
         friendsTab: "all",
         eventFilter: "upcoming",
-        language: localStorage.getItem("sync_language") || "it",
-        theme: localStorage.getItem("sync_theme") || "system",
+
+        language:
+            localStorage.getItem("sync_language") || "it",
+
+        theme:
+            localStorage.getItem("sync_theme") || "system",
 
         currentUser: JSON.parse(
             localStorage.getItem("sync_user") || "null"
@@ -48,8 +52,9 @@ const SYNC = {
         ),
 
         availabilityVisibility:
-            localStorage.getItem("sync_availability_visibility") ||
-            "friends"
+            localStorage.getItem(
+                "sync_availability_visibility"
+            ) || "friends"
     }
 };
 
@@ -259,7 +264,7 @@ const translations = {
         "settings.blocked": "Blocked users",
         "settings.blockedDescription": "Manage blocked users.",
         "settings.password": "Password",
-        "settings.passwordDescription": "Change your account password.",
+        "settings.passwordDescription": "Change your password.",
         "settings.deleteAccount": "Delete account",
         "settings.deleteDescription": "Permanently delete your account.",
         "settings.language": "Language",
@@ -277,7 +282,7 @@ const translations = {
         "auth.email": "Correo electrónico",
         "auth.password": "Contraseña",
         "auth.login.button": "Acceder",
-        "auth.forgot": "¿Has olvidado tu contraseña?",
+        "auth.forgot": "¿Has olvidado la contraseña?",
         "auth.register": "Crear una cuenta",
         "auth.register.title": "Crea tu cuenta",
         "auth.register.subtitle": "Entra en SYNC y empieza a organizar.",
@@ -541,11 +546,14 @@ function t(key) {
 }
 
 function showToast(message) {
-    const container = document.getElementById("toast-container");
+    const container =
+        document.getElementById("toast-container");
 
     if (!container) return;
 
-    const toast = document.createElement("div");
+    const toast =
+        document.createElement("div");
+
     toast.className = "toast";
     toast.textContent = message;
 
@@ -563,11 +571,14 @@ function setLoading(show) {
 }
 
 function getInitials(name = "") {
-    const parts = name.trim().split(/\s+/);
+    const parts =
+        name.trim().split(/\s+/);
 
     return parts
         .slice(0, 2)
-        .map(part => part[0]?.toUpperCase() || "")
+        .map(part =>
+            part[0]?.toUpperCase() || ""
+        )
         .join("");
 }
 
@@ -578,26 +589,38 @@ function getInitials(name = "") {
 
 function applyLanguage() {
 
-    document.documentElement.lang = SYNC.state.language;
+    document.documentElement.lang =
+        SYNC.state.language;
 
-    document.querySelectorAll("[data-i18n]").forEach(element => {
-        const key = element.dataset.i18n;
-        const translated = t(key);
+    document
+        .querySelectorAll("[data-i18n]")
+        .forEach(element => {
 
-        if (translated) {
-            element.textContent = translated;
-        }
-    });
+            const key =
+                element.dataset.i18n;
 
-    document.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
-        const key = element.dataset.i18nPlaceholder;
-        element.placeholder = t(key);
-    });
+            element.textContent =
+                t(key);
+        });
+
+    document
+        .querySelectorAll("[data-i18n-placeholder]")
+        .forEach(element => {
+
+            const key =
+                element.dataset.i18nPlaceholder;
+
+            element.placeholder =
+                t(key);
+        });
 
     const currentLanguage =
-        document.getElementById("current-language");
+        document.getElementById(
+            "current-language"
+        );
 
     if (currentLanguage) {
+
         const names = {
             it: "Italiano",
             en: "English",
@@ -628,8 +651,11 @@ function changeLanguage() {
                 ["fr", "🇫🇷 Français"]
             ].map(([code, name]) => `
                 <label class="choice-item ${
-                    SYNC.state.language === code ? "selected" : ""
+                    SYNC.state.language === code
+                        ? "selected"
+                        : ""
                 }">
+
                     <input
                         type="radio"
                         name="language"
@@ -640,19 +666,23 @@ function changeLanguage() {
                                 : ""
                         }
                     >
+
                     <span>${name}</span>
+
                 </label>
             `).join("")}
 
         </div>
 
         <div class="modal-actions">
+
             <button
                 class="primary-button"
                 data-modal-action="save-language"
             >
-                ${t("common.edit")}
+                Salva
             </button>
+
         </div>
     `);
 }
@@ -672,17 +702,25 @@ function applyTheme() {
 
     if (
         SYNC.state.theme === "system" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
+        window.matchMedia(
+            "(prefers-color-scheme: dark)"
+        ).matches
     ) {
         dark = true;
     }
 
-    document.body.classList.toggle("dark", dark);
+    document.body.classList.toggle(
+        "dark",
+        dark
+    );
 
     const currentTheme =
-        document.getElementById("current-theme");
+        document.getElementById(
+            "current-theme"
+        );
 
     if (currentTheme) {
+
         const names = {
             system: "Sistema",
             light: "Chiaro",
@@ -696,9 +734,16 @@ function applyTheme() {
 
 function toggleTheme() {
 
-    const order = ["system", "light", "dark"];
+    const order = [
+        "system",
+        "light",
+        "dark"
+    ];
 
-    const index = order.indexOf(SYNC.state.theme);
+    const index =
+        order.indexOf(
+            SYNC.state.theme
+        );
 
     SYNC.state.theme =
         order[(index + 1) % order.length];
@@ -746,13 +791,19 @@ function showAuthView(view) {
 function updateAuthState() {
 
     const authScreen =
-        document.getElementById("auth-screen");
+        document.getElementById(
+            "auth-screen"
+        );
 
     const mainApp =
-        document.getElementById("main-app");
+        document.getElementById(
+            "main-app"
+        );
 
     const loggedIn =
-        Boolean(SYNC.state.currentUser);
+        Boolean(
+            SYNC.state.currentUser
+        );
 
     authScreen?.classList.toggle(
         "hidden",
@@ -765,6 +816,7 @@ function updateAuthState() {
     );
 
     if (loggedIn) {
+
         updateProfileUI();
         updateHeader();
         renderAll();
@@ -775,28 +827,39 @@ function register(event) {
 
     event.preventDefault();
 
-    const form = event.currentTarget;
-
-    const data = new FormData(form);
+    const data =
+        new FormData(
+            event.currentTarget
+        );
 
     const displayName =
-        String(data.get("displayName") || "").trim();
+        String(
+            data.get("displayName") || ""
+        ).trim();
 
     const username =
-        String(data.get("username") || "")
+        String(
+            data.get("username") || ""
+        )
             .trim()
             .replace(/^@/, "");
 
     const email =
-        String(data.get("email") || "")
+        String(
+            data.get("email") || ""
+        )
             .trim()
             .toLowerCase();
 
     const password =
-        String(data.get("password") || "");
+        String(
+            data.get("password") || ""
+        );
 
     const confirm =
-        String(data.get("passwordConfirm") || "");
+        String(
+            data.get("passwordConfirm") || ""
+        );
 
     if (
         !displayName ||
@@ -804,7 +867,9 @@ function register(event) {
         !email ||
         !password
     ) {
-        showToast("Compila tutti i campi.");
+        showToast(
+            "Compila tutti i campi."
+        );
         return;
     }
 
@@ -816,13 +881,16 @@ function register(event) {
     }
 
     if (password !== confirm) {
-        showToast("Le password non coincidono.");
+        showToast(
+            "Le password non coincidono."
+        );
         return;
     }
 
     /*
-        DEMO LOCALE:
-        il backend reale sostituirà questa parte.
+      Demo locale.
+      L'autenticazione reale verrà collegata
+      al backend/database.
     */
 
     SYNC.state.currentUser = {
@@ -832,12 +900,15 @@ function register(event) {
         email,
         bio: "",
         avatar: "👤",
-        createdAt: new Date().toISOString()
+        createdAt:
+            new Date().toISOString()
     };
 
     saveState();
 
-    showToast("Account creato!");
+    showToast(
+        "Account creato!"
+    );
 
     updateAuthState();
 }
@@ -846,25 +917,27 @@ function login(event) {
 
     event.preventDefault();
 
-    const form = event.currentTarget;
-    const data = new FormData(form);
+    const data =
+        new FormData(
+            event.currentTarget
+        );
 
     const email =
-        String(data.get("email") || "")
+        String(
+            data.get("email") || ""
+        )
             .trim()
             .toLowerCase();
 
     if (!email) {
-        showToast("Inserisci la tua email.");
+        showToast(
+            "Inserisci la tua email."
+        );
         return;
     }
 
-    /*
-        DEMO LOCALE.
-        L'autenticazione reale sarà gestita dal Worker/backend.
-    */
-
     if (!SYNC.state.currentUser) {
+
         SYNC.state.currentUser = {
             id: crypto.randomUUID(),
             displayName: "Nuovo utente",
@@ -879,7 +952,9 @@ function login(event) {
 
     updateAuthState();
 
-    showToast("Accesso effettuato.");
+    showToast(
+        "Accesso effettuato."
+    );
 }
 
 function logout() {
@@ -892,7 +967,9 @@ function logout() {
 
     showAuthView("login");
 
-    showToast("Sei uscito da SYNC.");
+    showToast(
+        "Sei uscito da SYNC."
+    );
 }
 
 function forgotPassword() {
@@ -905,7 +982,10 @@ function forgotPassword() {
             per recuperare l'accesso.
         </p>
 
-        <form class="modal-form" id="forgot-form">
+        <form
+            class="modal-form"
+            id="forgot-form"
+        >
 
             <label>Email</label>
 
@@ -916,12 +996,14 @@ function forgotPassword() {
             >
 
             <div class="modal-actions">
+
                 <button
                     type="submit"
                     class="primary-button"
                 >
                     Invia
                 </button>
+
             </div>
 
         </form>
@@ -951,21 +1033,28 @@ function navigate(page) {
         page = "home";
     }
 
-    SYNC.state.currentPage = page;
+    SYNC.state.currentPage =
+        page;
 
-    document.querySelectorAll(".page").forEach(element => {
-        element.classList.toggle(
-            "active",
-            element.dataset.page === page
-        );
-    });
+    document
+        .querySelectorAll(".page")
+        .forEach(element => {
 
-    document.querySelectorAll("[data-page-target]").forEach(button => {
-        button.classList.toggle(
-            "active",
-            button.dataset.pageTarget === page
-        );
-    });
+            element.classList.toggle(
+                "active",
+                element.dataset.page === page
+            );
+        });
+
+    document
+        .querySelectorAll("[data-page-target]")
+        .forEach(button => {
+
+            button.classList.toggle(
+                "active",
+                button.dataset.pageTarget === page
+            );
+        });
 
     if (page === "friends") {
         renderFriends();
@@ -996,33 +1085,48 @@ function navigate(page) {
 function updateHeader() {
 
     const avatar =
-        document.getElementById("header-avatar");
+        document.getElementById(
+            "header-avatar"
+        );
 
     if (!avatar) return;
 
     avatar.textContent =
-        SYNC.state.currentUser?.avatar || "👤";
+        SYNC.state.currentUser?.avatar ||
+        "👤";
 }
 
 function updateProfileUI() {
 
-    const user = SYNC.state.currentUser;
+    const user =
+        SYNC.state.currentUser;
 
     if (!user) return;
 
     const name =
-        document.getElementById("profile-display-name");
+        document.getElementById(
+            "profile-display-name"
+        );
 
     const username =
-        document.getElementById("profile-username");
+        document.getElementById(
+            "profile-username"
+        );
 
     const bio =
-        document.getElementById("profile-bio");
+        document.getElementById(
+            "profile-bio"
+        );
 
     const avatar =
-        document.getElementById("profile-avatar");
+        document.getElementById(
+            "profile-avatar"
+        );
 
-    if (name) name.textContent = user.displayName;
+    if (name) {
+        name.textContent =
+            user.displayName;
+    }
 
     if (username) {
         username.textContent =
@@ -1031,22 +1135,32 @@ function updateProfileUI() {
 
     if (bio) {
         bio.textContent =
-            user.bio || "Aggiungi una bio al tuo profilo.";
+            user.bio ||
+            "Aggiungi una bio al tuo profilo.";
     }
 
     if (avatar) {
         avatar.textContent =
-            user.avatar || getInitials(user.displayName);
+            user.avatar ||
+            getInitials(
+                user.displayName
+            );
     }
 
     const friendsCount =
-        document.getElementById("profile-friends-count");
+        document.getElementById(
+            "profile-friends-count"
+        );
 
     const privateCount =
-        document.getElementById("profile-private-count");
+        document.getElementById(
+            "profile-private-count"
+        );
 
     const eventsCount =
-        document.getElementById("profile-events-count");
+        document.getElementById(
+            "profile-events-count"
+        );
 
     if (friendsCount) {
         friendsCount.textContent =
@@ -1066,7 +1180,8 @@ function updateProfileUI() {
 
 function editProfile() {
 
-    const user = SYNC.state.currentUser;
+    const user =
+        SYNC.state.currentUser;
 
     openModal(`
         <h2>👤 Modifica profilo</h2>
@@ -1075,14 +1190,19 @@ function editProfile() {
             Personalizza ciò che vedono gli altri.
         </p>
 
-        <form class="modal-form" id="profile-form">
+        <form
+            class="modal-form"
+            id="profile-form"
+        >
 
             <label>Nome visualizzato</label>
 
             <input
                 name="displayName"
                 maxlength="40"
-                value="${escapeHTML(user.displayName)}"
+                value="${escapeHTML(
+                    user.displayName
+                )}"
                 required
             >
 
@@ -1091,7 +1211,9 @@ function editProfile() {
             <input
                 name="username"
                 maxlength="30"
-                value="@${escapeHTML(user.username)}"
+                value="@${escapeHTML(
+                    user.username
+                )}"
                 required
             >
 
@@ -1100,15 +1222,19 @@ function editProfile() {
             <textarea
                 name="bio"
                 maxlength="160"
-            >${escapeHTML(user.bio || "")}</textarea>
+            >${escapeHTML(
+                user.bio || ""
+            )}</textarea>
 
             <div class="modal-actions">
+
                 <button
                     class="primary-button"
                     type="submit"
                 >
                     Salva
                 </button>
+
             </div>
 
         </form>
@@ -1123,105 +1249,153 @@ function editProfile() {
 function renderFriends() {
 
     const container =
-        document.getElementById("friends-list");
+        document.getElementById(
+            "friends-list"
+        );
 
     if (!container) return;
 
     const list =
-        SYNC.state.friends.filter(friend => {
+        SYNC.state.friends.filter(
+            friend => {
 
-            if (SYNC.state.friendsTab === "private") {
-                return SYNC.state.privateFriends
-                    .includes(friend.id);
+                if (
+                    SYNC.state.friendsTab ===
+                    "private"
+                ) {
+                    return SYNC.state
+                        .privateFriends
+                        .includes(
+                            friend.id
+                        );
+                }
+
+                return true;
             }
-
-            return true;
-        });
+        );
 
     if (!list.length) {
 
         container.innerHTML = `
             <div class="info-card">
+
                 <span>👥</span>
+
                 <div>
+
                     <strong>
                         ${
-                            SYNC.state.friendsTab === "private"
+                            SYNC.state.friendsTab ===
+                            "private"
                                 ? "La tua privata è vuota"
                                 : "Non hai ancora amici"
                         }
                     </strong>
+
                     <p>
                         Aggiungi persone per iniziare a organizzare.
                     </p>
+
                 </div>
+
             </div>
         `;
 
         return;
     }
 
-    container.innerHTML = list.map(friend => {
+    container.innerHTML =
+        list.map(friend => {
 
-        const isPrivate =
-            SYNC.state.privateFriends
-                .includes(friend.id);
+            const isPrivate =
+                SYNC.state
+                    .privateFriends
+                    .includes(
+                        friend.id
+                    );
 
-        return `
-            <article class="person-card">
+            return `
+                <article class="person-card">
 
-                <div class="person-avatar">
-                    ${escapeHTML(friend.avatar || "👤")}
-                </div>
+                    <div class="person-avatar">
+                        ${escapeHTML(
+                            friend.avatar ||
+                            "👤"
+                        )}
+                    </div>
 
-                <div class="person-info">
+                    <div class="person-info">
 
-                    <strong>
-                        ${escapeHTML(friend.displayName)}
-                    </strong>
+                        <strong>
+                            ${escapeHTML(
+                                friend.displayName
+                            )}
+                        </strong>
 
-                    <span>
-                        @${escapeHTML(friend.username)}
-                        ${isPrivate ? " · 🔒 Privata" : ""}
-                    </span>
+                        <span>
+                            @${escapeHTML(
+                                friend.username
+                            )}
+                            ${
+                                isPrivate
+                                    ? " · 🔒 Privata"
+                                    : ""
+                            }
+                        </span>
 
-                </div>
+                    </div>
 
-                <div class="person-actions">
+                    <div class="person-actions">
 
-                    <button
-                        class="icon-button"
-                        data-friend-action="toggle-private"
-                        data-friend-id="${friend.id}"
-                        aria-label="Privata"
-                    >
-                        ${isPrivate ? "🔒" : "♡"}
-                    </button>
+                        <button
+                            class="icon-button"
+                            data-friend-action="toggle-private"
+                            data-friend-id="${escapeHTML(
+                                friend.id
+                            )}"
+                            aria-label="Privata"
+                        >
+                            ${
+                                isPrivate
+                                    ? "🔒"
+                                    : "♡"
+                            }
+                        </button>
 
-                </div>
+                    </div>
 
-            </article>
-        `;
+                </article>
+            `;
 
-    }).join("");
+        }).join("");
 }
 
 function togglePrivateFriend(id) {
 
     const index =
-        SYNC.state.privateFriends.indexOf(id);
+        SYNC.state
+            .privateFriends
+            .indexOf(id);
 
     if (index >= 0) {
 
-        SYNC.state.privateFriends.splice(index, 1);
+        SYNC.state
+            .privateFriends
+            .splice(index, 1);
 
-        showToast("Rimosso dalla privata.");
+        showToast(
+            "Rimosso dalla privata."
+        );
 
     } else {
 
-        SYNC.state.privateFriends.push(id);
+        SYNC.state
+            .privateFriends
+            .push(id);
 
-        showToast("Aggiunto alla privata.");
+        showToast(
+            "Aggiunto alla privata."
+        );
     }
 
     saveState();
@@ -1266,7 +1440,9 @@ function inviteFriend() {
         SYNC.state.currentUser;
 
     const link =
-        `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(user.username)}`;
+        `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(
+            user.username
+        )}`;
 
     openModal(`
         <h2>🔗 Invita un amico</h2>
@@ -1321,14 +1497,15 @@ function searchFriend() {
             id="friend-search-results"
             class="people-list"
             style="margin-top:15px"
-        >
-        </div>
+        ></div>
     `);
 
     setTimeout(() => {
 
         document
-            .getElementById("friend-search-input")
+            .getElementById(
+                "friend-search-input"
+            )
             ?.focus();
 
     }, 50);
@@ -1341,7 +1518,8 @@ function searchFriend() {
 
 function createEvent() {
 
-    const friends = SYNC.state.friends;
+    const friends =
+        SYNC.state.friends;
 
     openModal(`
         <h2>🎯 Organizza qualcosa</h2>
@@ -1402,31 +1580,46 @@ function createEvent() {
             <div class="choice-list">
 
                 <label class="choice-item">
+
                     <input
                         type="radio"
                         name="audience"
                         value="all"
                         checked
                     >
-                    <span>👥 Tutti gli amici</span>
+
+                    <span>
+                        👥 Tutti gli amici
+                    </span>
+
                 </label>
 
                 <label class="choice-item">
+
                     <input
                         type="radio"
                         name="audience"
                         value="private"
                     >
-                    <span>🔒 Privata</span>
+
+                    <span>
+                        🔒 Privata
+                    </span>
+
                 </label>
 
                 <label class="choice-item">
+
                     <input
                         type="radio"
                         name="audience"
                         value="selected"
                     >
-                    <span>☑️ Seleziona persone</span>
+
+                    <span>
+                        ☑️ Seleziona persone
+                    </span>
+
                 </label>
 
             </div>
@@ -1435,23 +1628,27 @@ function createEvent() {
                 id="event-people-selection"
                 class="choice-list"
             >
-                ${
-                    friends.map(friend => `
-                        <label class="choice-item">
 
-                            <input
-                                type="checkbox"
-                                name="selectedPeople"
-                                value="${friend.id}"
-                            >
+                ${friends.map(friend => `
+                    <label class="choice-item">
 
-                            <span>
-                                ${escapeHTML(friend.displayName)}
-                            </span>
+                        <input
+                            type="checkbox"
+                            name="selectedPeople"
+                            value="${escapeHTML(
+                                friend.id
+                            )}"
+                        >
 
-                        </label>
-                    `).join("")
-                }
+                        <span>
+                            ${escapeHTML(
+                                friend.displayName
+                            )}
+                        </span>
+
+                    </label>
+                `).join("")}
+
             </div>
 
             <label>Descrizione</label>
@@ -1480,8 +1677,10 @@ function submitEvent(event) {
 
     event.preventDefault();
 
-    const form = event.currentTarget;
-    const data = new FormData(form);
+    const data =
+        new FormData(
+            event.currentTarget
+        );
 
     const audience =
         data.get("audience");
@@ -1491,17 +1690,23 @@ function submitEvent(event) {
     if (audience === "all") {
 
         participants =
-            SYNC.state.friends.map(friend => friend.id);
+            SYNC.state.friends
+                .map(
+                    friend => friend.id
+                );
 
     } else if (audience === "private") {
 
-        participants =
-            [...SYNC.state.privateFriends];
+        participants = [
+            ...SYNC.state.privateFriends
+        ];
 
     } else {
 
         participants =
-            data.getAll("selectedPeople");
+            data.getAll(
+                "selectedPeople"
+            );
     }
 
     const newEvent = {
@@ -1509,22 +1714,34 @@ function submitEvent(event) {
         id: crypto.randomUUID(),
 
         title:
-            String(data.get("title") || "").trim(),
+            String(
+                data.get("title") || ""
+            ).trim(),
 
         date:
-            String(data.get("date") || ""),
+            String(
+                data.get("date") || ""
+            ),
 
         time:
-            String(data.get("time") || ""),
+            String(
+                data.get("time") || ""
+            ),
 
         location:
-            String(data.get("location") || "").trim(),
+            String(
+                data.get("location") || ""
+            ).trim(),
 
         budget:
-            Number(data.get("budget") || 0),
+            Number(
+                data.get("budget") || 0
+            ),
 
         description:
-            String(data.get("description") || "").trim(),
+            String(
+                data.get("description") || ""
+            ).trim(),
 
         audience,
 
@@ -1539,12 +1756,19 @@ function submitEvent(event) {
             new Date().toISOString()
     };
 
-    if (!newEvent.title || !newEvent.date) {
-        showToast("Inserisci almeno titolo e data.");
+    if (
+        !newEvent.title ||
+        !newEvent.date
+    ) {
+        showToast(
+            "Inserisci almeno titolo e data."
+        );
         return;
     }
 
-    SYNC.state.events.unshift(newEvent);
+    SYNC.state.events.unshift(
+        newEvent
+    );
 
     saveState();
 
@@ -1554,7 +1778,9 @@ function submitEvent(event) {
 
     updateProfileUI();
 
-    showToast("Programma creato!");
+    showToast(
+        "Programma creato!"
+    );
 }
 
 
@@ -1565,7 +1791,9 @@ function submitEvent(event) {
 function renderEvents() {
 
     const container =
-        document.getElementById("events-list");
+        document.getElementById(
+            "events-list"
+        );
 
     if (!container) return;
 
@@ -1575,25 +1803,32 @@ function renderEvents() {
     let events =
         [...SYNC.state.events];
 
-    events = events.filter(event => {
+    events =
+        events.filter(event => {
 
-        const eventDate =
-            new Date(
-                `${event.date}T${event.time || "23:59"}`
-            );
+            const eventDate =
+                new Date(
+                    `${event.date}T${
+                        event.time ||
+                        "23:59"
+                    }`
+                );
 
-        return SYNC.state.eventFilter === "upcoming"
-            ? eventDate >= now
-            : eventDate < now;
-    });
+            return SYNC.state.eventFilter ===
+                "upcoming"
+                ? eventDate >= now
+                : eventDate < now;
+        });
 
     if (!events.length) {
 
         container.innerHTML = `
             <div class="info-card">
+
                 <span>🎯</span>
 
                 <div>
+
                     <strong>
                         Nessun programma
                     </strong>
@@ -1601,7 +1836,9 @@ function renderEvents() {
                     <p>
                         Organizza qualcosa con i tuoi amici.
                     </p>
+
                 </div>
+
             </div>
         `;
 
@@ -1613,7 +1850,10 @@ function renderEvents() {
 
             const date =
                 new Date(
-                    `${event.date}T${event.time || "00:00"}`
+                    `${event.date}T${
+                        event.time ||
+                        "00:00"
+                    }`
                 );
 
             const dateText =
@@ -1627,7 +1867,8 @@ function renderEvents() {
                 );
 
             const participants =
-                event.participants?.length || 0;
+                event.participants?.length ||
+                0;
 
             return `
                 <article class="event-card">
@@ -1635,25 +1876,35 @@ function renderEvents() {
                     <div class="event-card-header">
 
                         <div>
+
                             <h3>
-                                ${escapeHTML(event.title)}
+                                ${escapeHTML(
+                                    event.title
+                                )}
                             </h3>
 
                             <span class="muted">
-                                ${escapeHTML(dateText)}
+                                ${escapeHTML(
+                                    dateText
+                                )}
                             </span>
+
                         </div>
 
                         <span class="event-status ${
-                            event.status === "confirmed"
+                            event.status ===
+                            "confirmed"
                                 ? "confirmed"
                                 : "pending"
                         }">
+
                             ${
-                                event.status === "confirmed"
+                                event.status ===
+                                "confirmed"
                                     ? "Confermato"
                                     : "Da decidere"
                             }
+
                         </span>
 
                     </div>
@@ -1661,13 +1912,17 @@ function renderEvents() {
                     <div class="event-card-meta">
 
                         <span>
-                            🕐 ${escapeHTML(event.time || "—")}
+                            🕐 ${escapeHTML(
+                                event.time ||
+                                "—"
+                            )}
                         </span>
 
                         <span>
                             📍 ${
                                 escapeHTML(
-                                    event.location || "Luogo da decidere"
+                                    event.location ||
+                                    "Luogo da decidere"
                                 )
                             }
                         </span>
@@ -1678,7 +1933,13 @@ function renderEvents() {
 
                         ${
                             event.budget
-                                ? `<span>💰 ${event.budget}€ a persona</span>`
+                                ? `
+                                    <span>
+                                        💰 ${
+                                            event.budget
+                                        }€ a persona
+                                    </span>
+                                `
                                 : ""
                         }
 
@@ -1689,7 +1950,9 @@ function renderEvents() {
                         <button
                             class="secondary-button compact"
                             data-event-action="open"
-                            data-event-id="${event.id}"
+                            data-event-id="${escapeHTML(
+                                event.id
+                            )}"
                         >
                             Apri
                         </button>
@@ -1697,7 +1960,9 @@ function renderEvents() {
                         <button
                             class="text-button"
                             data-event-action="delete"
-                            data-event-id="${event.id}"
+                            data-event-id="${escapeHTML(
+                                event.id
+                            )}"
                         >
                             Elimina
                         </button>
@@ -1718,13 +1983,19 @@ function renderEvents() {
 function renderCalendar() {
 
     const grid =
-        document.getElementById("calendar-grid");
+        document.getElementById(
+            "calendar-grid"
+        );
 
     if (!grid) return;
 
     const hours = [];
 
-    for (let hour = 8; hour <= 23; hour++) {
+    for (
+        let hour = 8;
+        hour <= 23;
+        hour++
+    ) {
         hours.push(hour);
     }
 
@@ -1732,41 +2003,51 @@ function renderCalendar() {
         new Date();
 
     const dateString =
-        today.toISOString().split("T")[0];
+        today
+            .toISOString()
+            .split("T")[0];
 
     const dayCommitments =
         SYNC.state.commitments.filter(
             commitment =>
-                commitment.date === dateString
+                commitment.date ===
+                dateString
         );
 
     grid.innerHTML =
         hours.map(hour => {
 
             const commitment =
-                dayCommitments.find(item => {
+                dayCommitments.find(
+                    item => {
 
-                    const start =
-                        Number(
-                            item.time?.split(":")[0]
+                        const start =
+                            Number(
+                                item.time
+                                    ?.split(":")[0]
+                            );
+
+                        const end =
+                            Number(
+                                item.endTime
+                                    ?.split(":")[0]
+                            );
+
+                        return (
+                            hour >= start &&
+                            hour < end
                         );
-
-                    const end =
-                        Number(
-                            item.endTime?.split(":")[0]
-                        );
-
-                    return (
-                        hour >= start &&
-                        hour < end
-                    );
-                });
+                    }
+                );
 
             return `
                 <div class="calendar-row">
 
                     <div class="calendar-time">
-                        ${String(hour).padStart(2, "0")}:00
+                        ${String(hour).padStart(
+                            2,
+                            "0"
+                        )}:00
                     </div>
 
                     <div class="calendar-slot">
@@ -1840,6 +2121,7 @@ function createCommitment() {
             <label>Disponibilità</label>
 
             <select name="availability">
+
                 <option value="busy">
                     🔴 Occupato
                 </option>
@@ -1847,11 +2129,13 @@ function createCommitment() {
                 <option value="partial">
                     🟡 Parzialmente disponibile
                 </option>
+
             </select>
 
             <label>Visibilità dettagli</label>
 
             <select name="visibility">
+
                 <option value="busy-only">
                     Mostra solo occupato
                 </option>
@@ -1859,6 +2143,7 @@ function createCommitment() {
                 <option value="details">
                     Mostra dettagli
                 </option>
+
             </select>
 
             <div class="modal-actions">
@@ -1881,35 +2166,51 @@ function submitCommitment(event) {
     event.preventDefault();
 
     const data =
-        new FormData(event.currentTarget);
+        new FormData(
+            event.currentTarget
+        );
 
     const commitment = {
 
         id: crypto.randomUUID(),
 
         title:
-            String(data.get("title") || "").trim(),
+            String(
+                data.get("title") || ""
+            ).trim(),
 
         date:
-            String(data.get("date") || ""),
+            String(
+                data.get("date") || ""
+            ),
 
         time:
-            String(data.get("time") || ""),
+            String(
+                data.get("time") || ""
+            ),
 
         endTime:
-            String(data.get("endTime") || ""),
+            String(
+                data.get("endTime") || ""
+            ),
 
         availability:
-            String(data.get("availability")),
+            String(
+                data.get("availability")
+            ),
 
         visibility:
-            String(data.get("visibility")),
+            String(
+                data.get("visibility")
+            ),
 
         createdBy:
             SYNC.state.currentUser.id
     };
 
-    SYNC.state.commitments.push(commitment);
+    SYNC.state.commitments.push(
+        commitment
+    );
 
     saveState();
 
@@ -1917,7 +2218,9 @@ function submitCommitment(event) {
 
     renderCalendar();
 
-    showToast("Impegno salvato.");
+    showToast(
+        "Impegno salvato."
+    );
 }
 
 
@@ -1928,7 +2231,8 @@ function submitCommitment(event) {
 function manageAvailabilityVisibility() {
 
     const current =
-        SYNC.state.availabilityVisibility;
+        SYNC.state
+            .availabilityVisibility;
 
     openModal(`
         <h2>👁️ Visibilità disponibilità</h2>
@@ -1940,43 +2244,79 @@ function manageAvailabilityVisibility() {
         <div class="choice-list">
 
             <label class="choice-item">
+
                 <input
                     type="radio"
                     name="availabilityVisibility"
                     value="all"
-                    ${current === "all" ? "checked" : ""}
+                    ${
+                        current === "all"
+                            ? "checked"
+                            : ""
+                    }
                 >
-                <span>👥 Tutti gli amici</span>
+
+                <span>
+                    👥 Tutti gli amici
+                </span>
+
             </label>
 
             <label class="choice-item">
+
                 <input
                     type="radio"
                     name="availabilityVisibility"
                     value="private"
-                    ${current === "private" ? "checked" : ""}
+                    ${
+                        current === "private"
+                            ? "checked"
+                            : ""
+                    }
                 >
-                <span>🔒 Solo privata</span>
+
+                <span>
+                    🔒 Solo privata
+                </span>
+
             </label>
 
             <label class="choice-item">
+
                 <input
                     type="radio"
                     name="availabilityVisibility"
                     value="selected"
-                    ${current === "selected" ? "checked" : ""}
+                    ${
+                        current === "selected"
+                            ? "checked"
+                            : ""
+                    }
                 >
-                <span>☑️ Persone selezionate</span>
+
+                <span>
+                    ☑️ Persone selezionate
+                </span>
+
             </label>
 
             <label class="choice-item">
+
                 <input
                     type="radio"
                     name="availabilityVisibility"
                     value="none"
-                    ${current === "none" ? "checked" : ""}
+                    ${
+                        current === "none"
+                            ? "checked"
+                            : ""
+                    }
                 >
-                <span>🚫 Nessuno</span>
+
+                <span>
+                    🚫 Nessuno
+                </span>
+
             </label>
 
         </div>
@@ -2002,17 +2342,23 @@ function manageAvailabilityVisibility() {
 function renderNotifications() {
 
     const container =
-        document.getElementById("notifications-list");
+        document.getElementById(
+            "notifications-list"
+        );
 
     if (!container) return;
 
-    if (!SYNC.state.notifications.length) {
+    if (
+        !SYNC.state.notifications.length
+    ) {
 
         container.innerHTML = `
             <div class="info-card">
+
                 <span>🔔</span>
 
                 <div>
+
                     <strong>
                         Nessuna notifica
                     </strong>
@@ -2021,7 +2367,9 @@ function renderNotifications() {
                         Qui troverai richieste, eventi,
                         votazioni e aggiornamenti.
                     </p>
+
                 </div>
+
             </div>
         `;
 
@@ -2031,45 +2379,51 @@ function renderNotifications() {
     }
 
     container.innerHTML =
-        SYNC.state.notifications.map(notification => `
+        SYNC.state.notifications
+            .map(
+                notification => `
 
-            <article class="notification-item ${
-                notification.read ? "" : "unread"
-            }">
+                <article class="notification-item ${
+                    notification.read
+                        ? ""
+                        : "unread"
+                }">
 
-                <div class="notification-icon">
-                    ${escapeHTML(
-                        notification.icon || "🔔"
-                    )}
-                </div>
-
-                <div class="notification-content">
-
-                    <strong>
+                    <div class="notification-icon">
                         ${escapeHTML(
-                            notification.title
+                            notification.icon ||
+                            "🔔"
                         )}
-                    </strong>
+                    </div>
 
-                    <p>
-                        ${escapeHTML(
-                            notification.message
-                        )}
-                    </p>
+                    <div class="notification-content">
 
-                    <time>
-                        ${new Date(
-                            notification.createdAt
-                        ).toLocaleString(
-                            SYNC.state.language
-                        )}
-                    </time>
+                        <strong>
+                            ${escapeHTML(
+                                notification.title
+                            )}
+                        </strong>
 
-                </div>
+                        <p>
+                            ${escapeHTML(
+                                notification.message
+                            )}
+                        </p>
 
-            </article>
+                        <time>
+                            ${new Date(
+                                notification.createdAt
+                            ).toLocaleString(
+                                SYNC.state.language
+                            )}
+                        </time>
 
-        `).join("");
+                    </div>
+
+                </article>
+            `
+            )
+            .join("");
 
     updateNotificationBadge();
 }
@@ -2088,7 +2442,9 @@ function markNotificationsRead() {
 
     renderNotifications();
 
-    showToast("Notifiche segnate come lette.");
+    showToast(
+        "Notifiche segnate come lette."
+    );
 }
 
 function updateNotificationBadge() {
@@ -2102,10 +2458,13 @@ function updateNotificationBadge() {
 
     const unread =
         SYNC.state.notifications
-            .filter(item => !item.read)
+            .filter(
+                item => !item.read
+            )
             .length;
 
-    badge.textContent = unread;
+    badge.textContent =
+        unread;
 
     badge.classList.toggle(
         "hidden",
@@ -2149,31 +2508,46 @@ function createUpdate() {
             <div class="choice-list">
 
                 <label class="choice-item">
+
                     <input
                         type="radio"
                         name="audience"
                         value="all"
                         checked
                     >
-                    <span>👥 Tutti gli amici</span>
+
+                    <span>
+                        👥 Tutti gli amici
+                    </span>
+
                 </label>
 
                 <label class="choice-item">
+
                     <input
                         type="radio"
                         name="audience"
                         value="private"
                     >
-                    <span>🔒 Privata</span>
+
+                    <span>
+                        🔒 Privata
+                    </span>
+
                 </label>
 
                 <label class="choice-item">
+
                     <input
                         type="radio"
                         name="audience"
                         value="selected"
                     >
-                    <span>☑️ Seleziona persone</span>
+
+                    <span>
+                        ☑️ Seleziona persone
+                    </span>
+
                 </label>
 
             </div>
@@ -2186,7 +2560,9 @@ function createUpdate() {
                         <input
                             type="checkbox"
                             name="selectedPeople"
-                            value="${friend.id}"
+                            value="${escapeHTML(
+                                friend.id
+                            )}"
                         >
 
                         <span>
@@ -2220,7 +2596,9 @@ function submitUpdate(event) {
     event.preventDefault();
 
     const data =
-        new FormData(event.currentTarget);
+        new FormData(
+            event.currentTarget
+        );
 
     const audience =
         data.get("audience");
@@ -2236,18 +2614,17 @@ function submitUpdate(event) {
 
     } else if (audience === "private") {
 
-        recipients =
-            [...SYNC.state.privateFriends];
+        recipients = [
+            ...SYNC.state.privateFriends
+        ];
 
     } else {
 
         recipients =
-            data.getAll("selectedPeople");
+            data.getAll(
+                "selectedPeople"
+            );
     }
-
-    /*
-        Qui in produzione l'update verrà inviato al backend.
-    */
 
     closeModal();
 
@@ -2267,118 +2644,256 @@ function createFromFreeTime() {
 
 
 /* =========================================================
-   SEARCH
+   WEB SEARCH — WORKER + TAVILY
 ========================================================= */
 
-function openSearch() {
-    navigate("search");
+let searchTimer = null;
 
-    setTimeout(() => {
-        document
-            .getElementById("global-search")
-            ?.focus();
-    }, 100);
-}
-
-function performSearch(query) {
+async function performSearch(query) {
 
     const container =
-        document.getElementById("search-results");
+        document.getElementById(
+            "search-results"
+        );
 
     if (!container) return;
 
     query =
-        query.trim().toLowerCase();
+        String(query || "").trim();
 
     if (!query) {
 
         container.innerHTML = `
             <div class="info-card">
+
                 <span>🔎</span>
 
                 <div>
+
                     <strong>
-                        Cerca una persona
+                        Cosa stai cercando?
                     </strong>
 
                     <p>
-                        Usa nome visualizzato o @username.
+                        Cerca persone, luoghi, attività,
+                        prodotti e idee.
                     </p>
+
                 </div>
+
             </div>
         `;
 
         return;
     }
 
-    const results =
-        SYNC.state.friends.filter(friend => {
+    container.innerHTML = `
+        <div class="info-card">
 
-            const name =
-                friend.displayName.toLowerCase();
+            <span>🔄</span>
 
-            const username =
-                friend.username.toLowerCase();
+            <div>
 
-            return (
-                name.includes(query) ||
-                username.includes(
-                    query.replace(/^@/, "")
-                )
+                <strong>
+                    ${escapeHTML(
+                        t("common.loading")
+                    )}
+                </strong>
+
+                <p>
+                    SYNC sta cercando nel web...
+                </p>
+
+            </div>
+
+        </div>
+    `;
+
+    try {
+
+        const response =
+            await fetch(
+                `${SYNC_WORKER_URL}/search`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        query
+                    })
+                }
             );
-        });
 
-    if (!results.length) {
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            !data.success
+        ) {
+            throw new Error(
+                data.error ||
+                "Errore durante la ricerca."
+            );
+        }
+
+        const results =
+            Array.isArray(data.results)
+                ? data.results
+                : [];
+
+        if (!results.length) {
+
+            container.innerHTML = `
+                <div class="info-card">
+
+                    <span>🔎</span>
+
+                    <div>
+
+                        <strong>
+                            Nessun risultato
+                        </strong>
+
+                        <p>
+                            Prova a cercare qualcos'altro.
+                        </p>
+
+                    </div>
+
+                </div>
+            `;
+
+            return;
+        }
+
+        container.innerHTML = `
+
+            <div class="search-results-header">
+
+                <strong>
+                    Risultati per
+                    "${escapeHTML(data.query)}"
+                </strong>
+
+                <span>
+                    ${results.length} risultati
+                </span>
+
+            </div>
+
+            <div class="search-results-list">
+
+                ${results.map(
+                    result => `
+
+                    <article
+                        class="search-result-card"
+                    >
+
+                        <div class="search-result-top">
+
+                            <span
+                                class="search-result-source"
+                            >
+                                ${escapeHTML(
+                                    result.source ||
+                                    "Web"
+                                )}
+                            </span>
+
+                        </div>
+
+                        <h3>
+                            ${escapeHTML(
+                                result.title ||
+                                "Risultato"
+                            )}
+                        </h3>
+
+                        <p>
+                            ${escapeHTML(
+                                result.description ||
+                                ""
+                            )}
+                        </p>
+
+                        <div
+                            class="search-result-footer"
+                        >
+
+                            <span
+                                class="search-result-match"
+                            >
+                                SYNC match
+                            </span>
+
+                            <a
+                                href="${escapeHTML(
+                                    result.url
+                                )}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="primary-button compact"
+                            >
+                                Apri
+                            </a>
+
+                        </div>
+
+                    </article>
+                `
+                ).join("")}
+
+            </div>
+        `;
+
+    } catch (error) {
+
+        console.error(
+            "SYNC search error:",
+            error
+        );
 
         container.innerHTML = `
             <div class="info-card">
-                <span>🔎</span>
+
+                <span>⚠️</span>
 
                 <div>
+
                     <strong>
-                        Nessun risultato
+                        Ricerca non disponibile
                     </strong>
 
                     <p>
-                        Prova con un altro nome.
+                        Controlla la connessione e riprova.
                     </p>
+
                 </div>
+
             </div>
         `;
-
-        return;
     }
+}
 
-    container.innerHTML =
-        results.map(friend => `
+function openSearch() {
 
-            <article class="person-card">
+    navigate("search");
 
-                <div class="person-avatar">
-                    ${escapeHTML(
-                        friend.avatar || "👤"
-                    )}
-                </div>
+    setTimeout(() => {
 
-                <div class="person-info">
+        document
+            .getElementById(
+                "global-search"
+            )
+            ?.focus();
 
-                    <strong>
-                        ${escapeHTML(
-                            friend.displayName
-                        )}
-                    </strong>
-
-                    <span>
-                        @${escapeHTML(
-                            friend.username
-                        )}
-                    </span>
-
-                </div>
-
-            </article>
-
-        `).join("");
+    }, 100);
 }
 
 
@@ -2389,16 +2904,23 @@ function performSearch(query) {
 function openModal(content) {
 
     const modal =
-        document.getElementById("global-modal");
+        document.getElementById(
+            "global-modal"
+        );
 
     const body =
-        document.getElementById("modal-body");
+        document.getElementById(
+            "modal-body"
+        );
 
     if (!modal || !body) return;
 
-    body.innerHTML = content;
+    body.innerHTML =
+        content;
 
-    modal.classList.remove("hidden");
+    modal.classList.remove(
+        "hidden"
+    );
 
     modal.setAttribute(
         "aria-hidden",
@@ -2409,9 +2931,13 @@ function openModal(content) {
 function closeModal() {
 
     const modal =
-        document.getElementById("global-modal");
+        document.getElementById(
+            "global-modal"
+        );
 
-    modal?.classList.add("hidden");
+    modal?.classList.add(
+        "hidden"
+    );
 
     modal?.setAttribute(
         "aria-hidden",
@@ -2449,7 +2975,9 @@ async function handleModalAction(action) {
 
             closeModal();
 
-            showToast("Lingua aggiornata.");
+            showToast(
+                "Lingua aggiornata."
+            );
 
             break;
         }
@@ -2463,7 +2991,8 @@ async function handleModalAction(action) {
 
             if (!selected) return;
 
-            SYNC.state.availabilityVisibility =
+            SYNC.state
+                .availabilityVisibility =
                 selected.value;
 
             saveState();
@@ -2494,15 +3023,21 @@ async function handleModalAction(action) {
                     input.value
                 );
 
-                showToast("Link copiato.");
+                showToast(
+                    "Link copiato."
+                );
 
             } catch {
 
                 input.select();
 
-                document.execCommand("copy");
+                document.execCommand(
+                    "copy"
+                );
 
-                showToast("Link copiato.");
+                showToast(
+                    "Link copiato."
+                );
             }
 
             break;
@@ -2514,13 +3049,16 @@ async function handleModalAction(action) {
                 SYNC.state.currentUser;
 
             const link =
-                `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(user.username)}`;
+                `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(
+                    user.username
+                )}`;
 
             if (navigator.share) {
 
                 await navigator.share({
                     title: "Invito SYNC",
-                    text: `${user.displayName} ti ha invitato su SYNC.`,
+                    text:
+                        `${user.displayName} ti ha invitato su SYNC.`,
                     url: link
                 });
 
@@ -2541,6 +3079,59 @@ async function handleModalAction(action) {
         case "invite-friend":
             inviteFriend();
             break;
+
+        case "cancel-delete":
+            closeModal();
+            break;
+
+        case "confirm-delete":
+
+            SYNC.state.currentUser =
+                null;
+
+            SYNC.state.friends = [];
+            SYNC.state.privateFriends = [];
+            SYNC.state.events = [];
+            SYNC.state.commitments = [];
+            SYNC.state.notifications = [];
+
+            saveState();
+
+            closeModal();
+
+            updateAuthState();
+
+            showAuthView(
+                "login"
+            );
+
+            showToast(
+                "Account eliminato."
+            );
+
+            break;
+
+        case "edit-event": {
+
+            const eventId =
+                document.querySelector(
+                    "[data-event-id]"
+                )?.dataset.eventId;
+
+            if (eventId) {
+                editEvent(eventId);
+            }
+
+            break;
+        }
+
+        case "event-chat":
+
+            showToast(
+                "La chat dell'evento sarà collegata al backend."
+            );
+
+            break;
     }
 }
 
@@ -2555,47 +3146,483 @@ function updateAvailabilityVisibilityUI() {
 
     const labels = {
 
-        all: "👥 Tutti gli amici",
+        all:
+            "👥 Tutti gli amici",
 
-        friends: "👥 Tutti gli amici",
+        friends:
+            "👥 Tutti gli amici",
 
-        private: "🔒 Solo privata",
+        private:
+            "🔒 Solo privata",
 
-        selected: "☑️ Persone selezionate",
+        selected:
+            "☑️ Persone selezionate",
 
-        none: "🚫 Nessuno"
+        none:
+            "🚫 Nessuno"
     };
 
     element.textContent =
         labels[
-            SYNC.state.availabilityVisibility
-        ] || labels.friends;
+            SYNC.state
+                .availabilityVisibility
+        ] ||
+        labels.friends;
 }
 
 
 /* =========================================================
-   GLOBAL RENDER
+   EVENT EDIT
 ========================================================= */
 
-function renderAll() {
+function editEvent(id) {
 
-    applyLanguage();
+    const event =
+        SYNC.state.events.find(
+            item => item.id === id
+        );
 
-    applyTheme();
+    if (!event) return;
 
-    updateHeader();
+    openModal(`
+        <h2>✏️ Modifica programma</h2>
 
-    updateProfileUI();
+        <form
+            class="modal-form"
+            id="edit-event-form"
+            data-event-id="${escapeHTML(id)}"
+        >
 
-    renderFriends();
+            <label>Titolo</label>
 
-    renderCalendar();
+            <input
+                name="title"
+                value="${escapeHTML(
+                    event.title
+                )}"
+                required
+            >
+
+            <label>Data</label>
+
+            <input
+                type="date"
+                name="date"
+                value="${escapeHTML(
+                    event.date
+                )}"
+                required
+            >
+
+            <label>Ora</label>
+
+            <input
+                type="time"
+                name="time"
+                value="${escapeHTML(
+                    event.time || ""
+                )}"
+                required
+            >
+
+            <label>Luogo</label>
+
+            <input
+                name="location"
+                value="${escapeHTML(
+                    event.location || ""
+                )}"
+            >
+
+            <label>Budget per persona</label>
+
+            <input
+                type="number"
+                name="budget"
+                min="0"
+                step="0.50"
+                value="${event.budget || 0}"
+            >
+
+            <label>Descrizione</label>
+
+            <textarea
+                name="description"
+            >${escapeHTML(
+                event.description || ""
+            )}</textarea>
+
+            <div class="modal-actions">
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Salva modifiche
+                </button>
+
+            </div>
+
+        </form>
+    `);
+}
+
+function submitEditEvent(event) {
+
+    event.preventDefault();
+
+    const form =
+        event.currentTarget;
+
+    const id =
+        form.dataset.eventId;
+
+    const target =
+        SYNC.state.events.find(
+            item => item.id === id
+        );
+
+    if (!target) return;
+
+    const data =
+        new FormData(form);
+
+    target.title =
+        String(
+            data.get("title") || ""
+        ).trim();
+
+    target.date =
+        String(
+            data.get("date") || ""
+        );
+
+    target.time =
+        String(
+            data.get("time") || ""
+        );
+
+    target.location =
+        String(
+            data.get("location") || ""
+        ).trim();
+
+    target.budget =
+        Number(
+            data.get("budget") || 0
+        );
+
+    target.description =
+        String(
+            data.get("description") || ""
+        ).trim();
+
+    saveState();
+
+    closeModal();
 
     renderEvents();
 
-    renderNotifications();
+    showToast(
+        "Programma aggiornato."
+    );
+}
 
-    updateAvailabilityVisibilityUI();
+
+/* =========================================================
+   SEARCH / FRIEND INPUT
+========================================================= */
+
+function handleGlobalSearchInput(event) {
+
+    if (
+        event.target.id !==
+        "global-search"
+    ) {
+        return;
+    }
+
+    clearTimeout(
+        searchTimer
+    );
+
+    const query =
+        event.target.value;
+
+    if (!query.trim()) {
+
+        performSearch("");
+
+        return;
+    }
+
+    searchTimer =
+        setTimeout(() => {
+            performSearch(query);
+        }, 500);
+}
+
+function handleFriendSearchInput(event) {
+
+    if (
+        event.target.id !==
+        "friend-search-input"
+    ) {
+        return;
+    }
+
+    const query =
+        event.target.value
+            .trim()
+            .toLowerCase();
+
+    const container =
+        document.getElementById(
+            "friend-search-results"
+        );
+
+    if (!container) return;
+
+    const results =
+        SYNC.state.friends.filter(
+            friend =>
+                friend.displayName
+                    .toLowerCase()
+                    .includes(query) ||
+                friend.username
+                    .toLowerCase()
+                    .includes(
+                        query.replace(
+                            /^@/,
+                            ""
+                        )
+                    )
+        );
+
+    container.innerHTML =
+        results.map(
+            friend => `
+
+            <article class="person-card">
+
+                <div class="person-avatar">
+                    ${escapeHTML(
+                        friend.avatar ||
+                        "👤"
+                    )}
+                </div>
+
+                <div class="person-info">
+
+                    <strong>
+                        ${escapeHTML(
+                            friend.displayName
+                        )}
+                    </strong>
+
+                    <span>
+                        @${escapeHTML(
+                            friend.username
+                        )}
+                    </span>
+
+                </div>
+
+                <button
+                    class="primary-button compact"
+                    data-add-search-friend="${escapeHTML(
+                        friend.id
+                    )}"
+                >
+                    Aggiungi
+                </button>
+
+            </article>
+
+        `
+        ).join("");
+}
+
+
+/* =========================================================
+   DELETE / OPEN EVENT
+========================================================= */
+
+function deleteEvent(id) {
+
+    const event =
+        SYNC.state.events.find(
+            item => item.id === id
+        );
+
+    if (!event) return;
+
+    const confirmed =
+        window.confirm(
+            `Eliminare "${event.title}"?`
+        );
+
+    if (!confirmed) return;
+
+    SYNC.state.events =
+        SYNC.state.events.filter(
+            item => item.id !== id
+        );
+
+    saveState();
+
+    renderEvents();
+
+    updateProfileUI();
+
+    showToast(
+        "Programma eliminato."
+    );
+}
+
+function openEvent(id) {
+
+    const event =
+        SYNC.state.events.find(
+            item => item.id === id
+        );
+
+    if (!event) return;
+
+    openModal(`
+
+        <h2>
+            🎯 ${escapeHTML(
+                event.title
+            )}
+        </h2>
+
+        <p class="modal-subtitle">
+            ${escapeHTML(
+                event.description ||
+                "Nessuna descrizione."
+            )}
+        </p>
+
+        <div class="info-card">
+
+            <span>📅</span>
+
+            <div>
+
+                <strong>
+                    ${escapeHTML(
+                        event.date
+                    )}
+                </strong>
+
+                <p>
+                    🕐 ${escapeHTML(
+                        event.time || "—"
+                    )}
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="info-card">
+
+            <span>📍</span>
+
+            <div>
+
+                <strong>
+                    Luogo
+                </strong>
+
+                <p>
+                    ${escapeHTML(
+                        event.location ||
+                        "Da decidere"
+                    )}
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="info-card">
+
+            <span>👥</span>
+
+            <div>
+
+                <strong>
+                    Partecipanti
+                </strong>
+
+                <p>
+                    ${
+                        event.participants
+                            ?.length || 0
+                    } invitati
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="modal-actions">
+
+            <button
+                class="secondary-button"
+                data-modal-action="edit-event"
+                data-event-id="${escapeHTML(id)}"
+            >
+                Modifica
+            </button>
+
+            <button
+                class="primary-button"
+                data-modal-action="event-chat"
+                data-event-id="${escapeHTML(id)}"
+            >
+                💬 Chat
+            </button>
+
+        </div>
+    `);
+}
+
+
+/* =========================================================
+   DELETE ACCOUNT
+========================================================= */
+
+function confirmDeleteAccount() {
+
+    openModal(`
+        <h2>🗑️ Elimina account</h2>
+
+        <p class="modal-subtitle">
+            Questa operazione eliminerà definitivamente
+            il tuo account e i relativi dati.
+        </p>
+
+        <div class="modal-actions">
+
+            <button
+                class="secondary-button"
+                data-modal-action="cancel-delete"
+            >
+                Annulla
+            </button>
+
+            <button
+                class="danger-button"
+                data-modal-action="confirm-delete"
+            >
+                Elimina definitivamente
+            </button>
+
+        </div>
+    `);
 }
 
 
@@ -2652,18 +3679,22 @@ function createSampleDataIfNeeded() {
                 id: "notification-1",
                 icon: "🎬",
                 title: "Cinema sabato",
-                message: "Hai una votazione da completare.",
+                message:
+                    "Hai una votazione da completare.",
                 read: false,
-                createdAt: new Date().toISOString()
+                createdAt:
+                    new Date().toISOString()
             },
 
             {
                 id: "notification-2",
                 icon: "👥",
                 title: "Nuovo amico",
-                message: "Hai una nuova richiesta.",
+                message:
+                    "Hai una nuova richiesta.",
                 read: false,
-                createdAt: new Date().toISOString()
+                createdAt:
+                    new Date().toISOString()
             }
 
         ];
@@ -2674,334 +3705,415 @@ function createSampleDataIfNeeded() {
 
 
 /* =========================================================
-   EVENT LISTENERS
+   GLOBAL CLICK HANDLER
 ========================================================= */
 
-document.addEventListener("click", async event => {
+document.addEventListener(
+    "click",
+    async event => {
 
-    const actionElement =
-        event.target.closest("[data-action]");
+        const actionElement =
+            event.target.closest(
+                "[data-action]"
+            );
 
-    if (actionElement) {
+        if (actionElement) {
 
-        const action =
-            actionElement.dataset.action;
+            const action =
+                actionElement.dataset.action;
 
-        switch (action) {
+            switch (action) {
 
-            case "show-register":
-                showAuthView("register");
-                break;
+                case "show-register":
+                    showAuthView("register");
+                    break;
 
-            case "show-login":
-                showAuthView("login");
-                break;
+                case "show-login":
+                    showAuthView("login");
+                    break;
 
-            case "forgot-password":
-                forgotPassword();
-                break;
+                case "forgot-password":
+                    forgotPassword();
+                    break;
 
-            case "logout":
-                logout();
-                break;
+                case "logout":
+                    logout();
+                    break;
 
-            case "open-profile":
-                navigate("profile");
-                break;
+                case "open-profile":
+                    navigate("profile");
+                    break;
 
-            case "open-notifications":
-                navigate("notifications");
-                break;
+                case "open-notifications":
+                    navigate("notifications");
+                    break;
 
-            case "open-search":
-                openSearch();
-                break;
+                case "open-search":
+                    openSearch();
+                    break;
 
-            case "create-event":
-                createEvent();
-                break;
+                case "create-event":
+                    createEvent();
+                    break;
 
-            case "create-update":
-                createUpdate();
-                break;
+                case "create-update":
+                    createUpdate();
+                    break;
 
-            case "create-from-free-time":
-                createFromFreeTime();
-                break;
+                case "create-from-free-time":
+                    createFromFreeTime();
+                    break;
 
-            case "open-friends":
-                navigate("friends");
-                break;
+                case "open-friends":
+                    navigate("friends");
+                    break;
 
-            case "open-calendar":
-                navigate("calendar");
-                break;
+                case "open-calendar":
+                    navigate("calendar");
+                    break;
 
-            case "open-availability":
-                navigate("calendar");
-                break;
+                case "open-availability":
+                    navigate("calendar");
+                    break;
 
-            case "add-friend":
-                addFriend();
-                break;
+                case "add-friend":
+                    addFriend();
+                    break;
 
-            case "open-private-list":
-                navigate("friends");
-                SYNC.state.friendsTab = "private";
-                renderFriends();
-                break;
+                case "open-private-list":
 
-            case "open-privacy":
-                navigate("settings");
-                break;
+                    navigate("friends");
 
-            case "open-settings":
-                navigate("settings");
-                break;
+                    SYNC.state.friendsTab =
+                        "private";
 
-            case "manage-availability-visibility":
-                manageAvailabilityVisibility();
-                break;
+                    renderFriends();
 
-            case "toggle-theme":
-                toggleTheme();
-                break;
+                    break;
 
-            case "change-language":
-                changeLanguage();
-                break;
+                case "open-privacy":
+                    navigate("settings");
+                    break;
 
-            case "notification-settings":
-                showToast(
-                    "Le impostazioni notifiche saranno collegate al backend."
-                );
-                break;
+                case "open-settings":
+                    navigate("settings");
+                    break;
 
-            case "edit-profile":
-                editProfile();
-                break;
+                case "manage-availability-visibility":
+                    manageAvailabilityVisibility();
+                    break;
 
-            case "change-password":
-                showToast(
-                    "Il cambio password sarà gestito dal backend."
-                );
-                break;
+                case "toggle-theme":
+                    toggleTheme();
+                    break;
 
-            case "delete-account":
-                confirmDeleteAccount();
-                break;
+                case "change-language":
+                    changeLanguage();
+                    break;
 
-            case "open-blocked-users":
-                showToast(
-                    "Gestione blocchi pronta per il backend."
-                );
-                break;
+                case "notification-settings":
 
-            case "mark-notifications-read":
-                markNotificationsRead();
-                break;
+                    showToast(
+                        "Le impostazioni notifiche saranno collegate al backend."
+                    );
 
-            case "create-commitment":
-                createCommitment();
-                break;
+                    break;
 
-            case "create-family-event":
-                createEvent();
-                break;
+                case "edit-profile":
+                    editProfile();
+                    break;
 
-            case "add-family-member":
-                addFriend();
-                break;
+                case "change-password":
 
-            case "family-settings":
-                showToast(
-                    "Impostazioni famiglia."
-                );
-                break;
+                    showToast(
+                        "Il cambio password sarà gestito dal backend."
+                    );
 
-            case "previous-day":
-                showToast("Giorno precedente.");
-                break;
+                    break;
 
-            case "next-day":
-                showToast("Giorno successivo.");
-                break;
+                case "delete-account":
+                    confirmDeleteAccount();
+                    break;
 
-            case "go-back":
-                navigate("home");
-                break;
+                case "open-blocked-users":
 
-            case "close-modal":
-                closeModal();
-                break;
+                    showToast(
+                        "Gestione blocchi pronta per il backend."
+                    );
+
+                    break;
+
+                case "mark-notifications-read":
+                    markNotificationsRead();
+                    break;
+
+                case "create-commitment":
+                    createCommitment();
+                    break;
+
+                case "create-family-event":
+                    createEvent();
+                    break;
+
+                case "add-family-member":
+                    addFriend();
+                    break;
+
+                case "family-settings":
+
+                    showToast(
+                        "Impostazioni famiglia."
+                    );
+
+                    break;
+
+                case "previous-day":
+
+                    showToast(
+                        "Giorno precedente."
+                    );
+
+                    break;
+
+                case "next-day":
+
+                    showToast(
+                        "Giorno successivo."
+                    );
+
+                    break;
+
+                case "go-back":
+                    navigate("home");
+                    break;
+
+                case "close-modal":
+                    closeModal();
+                    break;
+            }
         }
-    }
 
+        const pageTarget =
+            event.target.closest(
+                "[data-page-target]"
+            );
 
-    const pageTarget =
-        event.target.closest("[data-page-target]");
+        if (pageTarget) {
 
-    if (pageTarget) {
+            navigate(
+                pageTarget.dataset.pageTarget
+            );
+        }
 
-        navigate(
-            pageTarget.dataset.pageTarget
-        );
-    }
+        const friendAction =
+            event.target.closest(
+                "[data-friend-action]"
+            );
 
+        if (friendAction) {
 
-    const friendAction =
-        event.target.closest("[data-friend-action]");
+            if (
+                friendAction.dataset
+                    .friendAction ===
+                "toggle-private"
+            ) {
 
-    if (friendAction) {
+                togglePrivateFriend(
+                    friendAction.dataset
+                        .friendId
+                );
+            }
+        }
 
-        if (
-            friendAction.dataset.friendAction ===
-            "toggle-private"
-        ) {
+        const friendsTab =
+            event.target.closest(
+                "[data-friends-tab]"
+            );
 
-            togglePrivateFriend(
-                friendAction.dataset.friendId
+        if (friendsTab) {
+
+            SYNC.state.friendsTab =
+                friendsTab.dataset.friendsTab;
+
+            document
+                .querySelectorAll(
+                    "[data-friends-tab]"
+                )
+                .forEach(button => {
+
+                    button.classList.toggle(
+                        "active",
+                        button ===
+                            friendsTab
+                    );
+                });
+
+            renderFriends();
+        }
+
+        const eventFilter =
+            event.target.closest(
+                "[data-event-filter]"
+            );
+
+        if (eventFilter) {
+
+            SYNC.state.eventFilter =
+                eventFilter.dataset.eventFilter;
+
+            document
+                .querySelectorAll(
+                    "[data-event-filter]"
+                )
+                .forEach(button => {
+
+                    button.classList.toggle(
+                        "active",
+                        button ===
+                            eventFilter
+                    );
+                });
+
+            renderEvents();
+        }
+
+        const eventAction =
+            event.target.closest(
+                "[data-event-action]"
+            );
+
+        if (eventAction) {
+
+            const id =
+                eventAction.dataset.eventId;
+
+            if (
+                eventAction.dataset
+                    .eventAction ===
+                "delete"
+            ) {
+
+                deleteEvent(id);
+            }
+
+            if (
+                eventAction.dataset
+                    .eventAction ===
+                "open"
+            ) {
+
+                openEvent(id);
+            }
+        }
+
+        const addSearchFriend =
+            event.target.closest(
+                "[data-add-search-friend]"
+            );
+
+        if (addSearchFriend) {
+
+            const id =
+                addSearchFriend.dataset
+                    .addSearchFriend;
+
+            const friend =
+                SYNC.state.friends.find(
+                    item => item.id === id
+                );
+
+            if (friend) {
+
+                showToast(
+                    `${friend.displayName} è già nei tuoi amici.`
+                );
+            }
+        }
+
+        const modalAction =
+            event.target.closest(
+                "[data-modal-action]"
+            );
+
+        if (modalAction) {
+
+            await handleModalAction(
+                modalAction.dataset
+                    .modalAction
             );
         }
     }
-
-
-    const friendsTab =
-        event.target.closest("[data-friends-tab]");
-
-    if (friendsTab) {
-
-        SYNC.state.friendsTab =
-            friendsTab.dataset.friendsTab;
-
-        document
-            .querySelectorAll("[data-friends-tab]")
-            .forEach(button => {
-
-                button.classList.toggle(
-                    "active",
-                    button === friendsTab
-                );
-
-            });
-
-        renderFriends();
-    }
-
-
-    const eventFilter =
-        event.target.closest("[data-event-filter]");
-
-    if (eventFilter) {
-
-        SYNC.state.eventFilter =
-            eventFilter.dataset.eventFilter;
-
-        document
-            .querySelectorAll("[data-event-filter]")
-            .forEach(button => {
-
-                button.classList.toggle(
-                    "active",
-                    button === eventFilter
-                );
-
-            });
-
-        renderEvents();
-    }
-
-
-    const eventAction =
-        event.target.closest("[data-event-action]");
-
-    if (eventAction) {
-
-        const id =
-            eventAction.dataset.eventId;
-
-        if (
-            eventAction.dataset.eventAction ===
-            "delete"
-        ) {
-
-            deleteEvent(id);
-        }
-
-        if (
-            eventAction.dataset.eventAction ===
-            "open"
-        ) {
-
-            openEvent(id);
-        }
-    }
-
-
-    const modalAction =
-        event.target.closest("[data-modal-action]");
-
-    if (modalAction) {
-
-        await handleModalAction(
-            modalAction.dataset.modalAction
-        );
-    }
-});
+);
 
 
 /* =========================================================
    FORMS
 ========================================================= */
 
-document.addEventListener("submit", event => {
+document.addEventListener(
+    "submit",
+    event => {
 
-    switch (event.target.id) {
+        switch (event.target.id) {
 
-        case "login-form":
-            login(event);
-            break;
+            case "login-form":
+                login(event);
+                break;
 
-        case "register-form":
-            register(event);
-            break;
+            case "register-form":
+                register(event);
+                break;
 
-        case "forgot-form":
+            case "forgot-form":
 
-            event.preventDefault();
+                event.preventDefault();
 
-            closeModal();
+                closeModal();
 
-            showToast(
-                "Se il tuo account esiste, riceverai le istruzioni."
-            );
+                showToast(
+                    "Se il tuo account esiste, riceverai le istruzioni."
+                );
 
-            break;
+                break;
 
-        case "profile-form":
+            case "profile-form": {
 
-            event.preventDefault();
-
-            {
+                event.preventDefault();
 
                 const data =
-                    new FormData(event.target);
+                    new FormData(
+                        event.target
+                    );
 
-                SYNC.state.currentUser.displayName =
+                SYNC.state
+                    .currentUser
+                    .displayName =
                     String(
-                        data.get("displayName") || ""
+                        data.get(
+                            "displayName"
+                        ) || ""
                     ).trim();
 
-                SYNC.state.currentUser.username =
+                SYNC.state
+                    .currentUser
+                    .username =
                     String(
-                        data.get("username") || ""
+                        data.get(
+                            "username"
+                        ) || ""
                     )
                         .trim()
-                        .replace(/^@/, "");
+                        .replace(
+                            /^@/,
+                            ""
+                        );
 
-                SYNC.state.currentUser.bio =
+                SYNC.state
+                    .currentUser
+                    .bio =
                     String(
-                        data.get("bio") || ""
+                        data.get("bio") ||
+                        ""
                     ).trim();
 
                 saveState();
@@ -3013,324 +4125,62 @@ document.addEventListener("submit", event => {
                 showToast(
                     "Profilo aggiornato."
                 );
+
+                break;
             }
 
-            break;
+            case "event-form":
+                submitEvent(event);
+                break;
 
-        case "event-form":
-            submitEvent(event);
-            break;
+            case "edit-event-form":
+                submitEditEvent(event);
+                break;
 
-        case "commitment-form":
-            submitCommitment(event);
-            break;
+            case "commitment-form":
+                submitCommitment(event);
+                break;
 
-        case "update-form":
-            submitUpdate(event);
-            break;
+            case "update-form":
+                submitUpdate(event);
+                break;
+        }
     }
-});
+);
 
 
 /* =========================================================
-   SEARCH INPUTS
+   INPUT HANDLERS
 ========================================================= */
 
-document.addEventListener("input", event => {
+document.addEventListener(
+    "input",
+    event => {
 
-    if (
-        event.target.id ===
-        "global-search"
-    ) {
-
-        performSearch(
-            event.target.value
-        );
-    }
-
-    if (
-        event.target.id ===
-        "friend-search-input"
-    ) {
-
-        const query =
-            event.target.value
-                .trim()
-                .toLowerCase();
-
-        const container =
-            document.getElementById(
-                "friend-search-results"
-            );
-
-        if (!container) return;
-
-        const results =
-            SYNC.state.friends.filter(friend =>
-                friend.displayName
-                    .toLowerCase()
-                    .includes(query) ||
-                friend.username
-                    .toLowerCase()
-                    .includes(
-                        query.replace(/^@/, "")
-                    )
-            );
-
-        container.innerHTML =
-            results.map(friend => `
-
-                <article class="person-card">
-
-                    <div class="person-avatar">
-                        ${escapeHTML(
-                            friend.avatar || "👤"
-                        )}
-                    </div>
-
-                    <div class="person-info">
-
-                        <strong>
-                            ${escapeHTML(
-                                friend.displayName
-                            )}
-                        </strong>
-
-                        <span>
-                            @${escapeHTML(
-                                friend.username
-                            )}
-                        </span>
-
-                    </div>
-
-                    <button
-                        class="primary-button compact"
-                        data-add-search-friend="${friend.id}"
-                    >
-                        Aggiungi
-                    </button>
-
-                </article>
-
-            `).join("");
-    }
-});
-
-
-/* =========================================================
-   SEARCH FRIEND ADD
-========================================================= */
-
-document.addEventListener("click", event => {
-
-    const button =
-        event.target.closest(
-            "[data-add-search-friend]"
+        handleGlobalSearchInput(
+            event
         );
 
-    if (!button) return;
-
-    const id =
-        button.dataset.addSearchFriend;
-
-    const friend =
-        SYNC.state.friends.find(
-            item => item.id === id
-        );
-
-    if (friend) {
-
-        showToast(
-            `${friend.displayName} è già nei tuoi amici.`
+        handleFriendSearchInput(
+            event
         );
     }
-});
-
-
-/* =========================================================
-   DELETE EVENT
-========================================================= */
-
-function deleteEvent(id) {
-
-    const event =
-        SYNC.state.events.find(
-            item => item.id === id
-        );
-
-    if (!event) return;
-
-    const confirmed =
-        window.confirm(
-            `Eliminare "${event.title}"?`
-        );
-
-    if (!confirmed) return;
-
-    SYNC.state.events =
-        SYNC.state.events.filter(
-            item => item.id !== id
-        );
-
-    saveState();
-
-    renderEvents();
-
-    updateProfileUI();
-
-    showToast("Programma eliminato.");
-}
-
-
-/* =========================================================
-   OPEN EVENT
-========================================================= */
-
-function openEvent(id) {
-
-    const event =
-        SYNC.state.events.find(
-            item => item.id === id
-        );
-
-    if (!event) return;
-
-    openModal(`
-
-        <h2>🎯 ${escapeHTML(event.title)}</h2>
-
-        <p class="modal-subtitle">
-            ${escapeHTML(
-                event.description ||
-                "Nessuna descrizione."
-            )}
-        </p>
-
-        <div class="info-card">
-
-            <span>📅</span>
-
-            <div>
-                <strong>
-                    ${escapeHTML(event.date)}
-                </strong>
-
-                <p>
-                    🕐 ${escapeHTML(event.time || "—")}
-                </p>
-            </div>
-
-        </div>
-
-        <div class="info-card">
-
-            <span>📍</span>
-
-            <div>
-                <strong>
-                    Luogo
-                </strong>
-
-                <p>
-                    ${escapeHTML(
-                        event.location ||
-                        "Da decidere"
-                    )}
-                </p>
-            </div>
-
-        </div>
-
-        <div class="info-card">
-
-            <span>👥</span>
-
-            <div>
-                <strong>
-                    Partecipanti
-                </strong>
-
-                <p>
-                    ${
-                        event.participants?.length ||
-                        0
-                    } invitati
-                </p>
-            </div>
-
-        </div>
-
-        <div class="modal-actions">
-
-            <button
-                class="secondary-button"
-                data-modal-action="edit-event"
-                data-event-id="${event.id}"
-            >
-                Modifica
-            </button>
-
-            <button
-                class="primary-button"
-                data-modal-action="event-chat"
-                data-event-id="${event.id}"
-            >
-                💬 Chat
-            </button>
-
-        </div>
-    `);
-}
-
-
-/* =========================================================
-   DELETE ACCOUNT
-========================================================= */
-
-function confirmDeleteAccount() {
-
-    openModal(`
-        <h2>🗑️ Elimina account</h2>
-
-        <p class="modal-subtitle">
-            Questa operazione eliminerà definitivamente
-            il tuo account e i relativi dati.
-        </p>
-
-        <div class="modal-actions">
-
-            <button
-                class="secondary-button"
-                data-modal-action="cancel-delete"
-            >
-                Annulla
-            </button>
-
-            <button
-                class="danger-button"
-                data-modal-action="confirm-delete"
-            >
-                Elimina definitivamente
-            </button>
-
-        </div>
-    `);
-}
+);
 
 
 /* =========================================================
    KEYBOARD
 ========================================================= */
 
-document.addEventListener("keydown", event => {
+document.addEventListener(
+    "keydown",
+    event => {
 
-    if (
-        event.key === "Escape"
-    ) {
-        closeModal();
+        if (event.key === "Escape") {
+            closeModal();
+        }
     }
-});
+);
 
 
 /* =========================================================
@@ -3338,15 +4188,47 @@ document.addEventListener("keydown", event => {
 ========================================================= */
 
 window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", () => {
+    .matchMedia(
+        "(prefers-color-scheme: dark)"
+    )
+    .addEventListener(
+        "change",
+        () => {
 
-        if (
-            SYNC.state.theme === "system"
-        ) {
-            applyTheme();
+            if (
+                SYNC.state.theme ===
+                "system"
+            ) {
+                applyTheme();
+            }
         }
-    });
+    );
+
+
+/* =========================================================
+   GLOBAL RENDER
+========================================================= */
+
+function renderAll() {
+
+    applyLanguage();
+
+    applyTheme();
+
+    updateHeader();
+
+    updateProfileUI();
+
+    renderFriends();
+
+    renderCalendar();
+
+    renderEvents();
+
+    renderNotifications();
+
+    updateAvailabilityVisibilityUI();
+}
 
 
 /* =========================================================
@@ -3364,11 +4246,6 @@ function init() {
     updateAuthState();
 
     updateAvailabilityVisibilityUI();
-
-    /*
-        Se l'utente non è loggato,
-        mostriamo la schermata login.
-    */
 
     if (!SYNC.state.currentUser) {
         showAuthView("login");
