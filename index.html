@@ -1,1621 +1,1631 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    >
-
-    <meta
-        name="theme-color"
-        content="#ffffff"
-    >
-
-    <meta
-        name="description"
-        content="SYNC — organizza la tua vita insieme alle persone che contano."
-    >
-
-    <title>SYNC</title>
-
-    <!--
-        Il CSS verrà collegato nella prossima fase.
-    -->
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="SYNC — organizza la tua vita insieme alle persone che contano.">
+<title>SYNC</title>
+<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <!-- =========================================================
-         APP ROOT
-    ========================================================== -->
+<div id="app">
 
-    <div id="app">
+<!-- =====================================================
+     AUTH
+===================================================== -->
 
-        <!-- =====================================================
-             AUTH
-        ====================================================== -->
+<section id="auth-screen" class="screen auth-screen">
 
-        <section id="auth-screen" class="screen auth-screen">
+    <div class="auth-container">
 
-            <div class="auth-container">
+        <div class="brand">
 
-                <div class="brand">
-                    <div class="brand-logo" aria-label="SYNC">S</div>
-                    <h1>SYNC</h1>
-                    <p data-i18n="auth.tagline">
-                        Organizza tutto insieme.
-                    </p>
-                </div>
-
-                <!-- LOGIN -->
-
-                <div id="login-view" class="auth-view">
-
-                    <h2 data-i18n="auth.login.title">
-                        Bentornato
-                    </h2>
-
-                    <p data-i18n="auth.login.subtitle">
-                        Accedi al tuo account SYNC.
-                    </p>
-
-                    <form id="login-form" novalidate>
-
-                        <label for="login-email" data-i18n="auth.email">
-                            Email
-                        </label>
-
-                        <input
-                            id="login-email"
-                            name="email"
-                            type="email"
-                            autocomplete="email"
-                            required
-                        >
-
-                        <label for="login-password" data-i18n="auth.password">
-                            Password
-                        </label>
-
-                        <input
-                            id="login-password"
-                            name="password"
-                            type="password"
-                            autocomplete="current-password"
-                            required
-                        >
-
-                        <button
-                            type="submit"
-                            class="primary-button"
-                        >
-                            <span data-i18n="auth.login.button">
-                                Accedi
-                            </span>
-                        </button>
-
-                    </form>
-
-                    <button
-                        type="button"
-                        class="text-button"
-                        data-action="forgot-password"
-                        data-i18n="auth.forgot"
-                    >
-                        Hai dimenticato la password?
-                    </button>
-
-                    <div class="auth-divider">
-                        <span data-i18n="common.or">oppure</span>
-                    </div>
-
-                    <button
-                        type="button"
-                        class="secondary-button"
-                        data-action="show-register"
-                        data-i18n="auth.register"
-                    >
-                        Crea un account
-                    </button>
-
-                </div>
-
-
-                <!-- REGISTRAZIONE -->
-
-                <div
-                    id="register-view"
-                    class="auth-view hidden"
-                >
-
-                    <h2 data-i18n="auth.register.title">
-                        Crea il tuo account
-                    </h2>
-
-                    <p data-i18n="auth.register.subtitle">
-                        Entra in SYNC e inizia a organizzare.
-                    </p>
-
-                    <form id="register-form" novalidate>
-
-                        <label
-                            for="register-name"
-                            data-i18n="auth.displayName"
-                        >
-                            Nome visualizzato
-                        </label>
-
-                        <input
-                            id="register-name"
-                            name="displayName"
-                            type="text"
-                            autocomplete="name"
-                            maxlength="40"
-                            required
-                        >
-
-                        <label
-                            for="register-username"
-                            data-i18n="auth.username"
-                        >
-                            Nome utente
-                        </label>
-
-                        <input
-                            id="register-username"
-                            name="username"
-                            type="text"
-                            autocomplete="username"
-                            maxlength="30"
-                            placeholder="@nomeutente"
-                            required
-                        >
-
-                        <label
-                            for="register-email"
-                            data-i18n="auth.email"
-                        >
-                            Email
-                        </label>
-
-                        <input
-                            id="register-email"
-                            name="email"
-                            type="email"
-                            autocomplete="email"
-                            required
-                        >
-
-                        <label
-                            for="register-password"
-                            data-i18n="auth.password"
-                        >
-                            Password
-                        </label>
-
-                        <input
-                            id="register-password"
-                            name="password"
-                            type="password"
-                            autocomplete="new-password"
-                            required
-                        >
-
-                        <label
-                            for="register-password-confirm"
-                            data-i18n="auth.confirmPassword"
-                        >
-                            Conferma password
-                        </label>
-
-                        <input
-                            id="register-password-confirm"
-                            name="passwordConfirm"
-                            type="password"
-                            autocomplete="new-password"
-                            required
-                        >
-
-                        <button
-                            type="submit"
-                            class="primary-button"
-                            data-i18n="auth.register.button"
-                        >
-                            Registrati
-                        </button>
-
-                    </form>
-
-                    <button
-                        type="button"
-                        class="text-button"
-                        data-action="show-login"
-                        data-i18n="auth.haveAccount"
-                    >
-                        Hai già un account? Accedi
-                    </button>
-
-                </div>
-
+            <div class="brand-logo" aria-label="SYNC">
+                <span class="logo-orbit"></span>
+                <span class="logo-dot dot-a"></span>
+                <span class="logo-dot dot-b"></span>
+                <span class="logo-dot dot-c"></span>
+                <span class="logo-calendar">▦</span>
             </div>
 
-        </section>
-
-
-        <!-- =====================================================
-             MAIN APPLICATION
-        ====================================================== -->
-
-        <section
-            id="main-app"
-            class="screen app-screen hidden"
-        >
-
-            <!-- =================================================
-                 TOP BAR
-            ================================================== -->
-
-            <header class="topbar">
-
-                <div class="topbar-left">
-
-                    <button
-                        type="button"
-                        class="icon-button"
-                        data-action="open-profile"
-                        aria-label="Profilo"
-                    >
-                        <span id="header-avatar">👤</span>
-                    </button>
-
-                    <div class="header-brand">
-                        <strong>SYNC</strong>
-                    </div>
-
-                </div>
-
-                <div class="topbar-actions">
-
-                    <button
-                        type="button"
-                        class="icon-button"
-                        data-action="open-notifications"
-                        aria-label="Notifiche"
-                    >
-                        🔔
-                        <span
-                            id="notification-badge"
-                            class="notification-badge hidden"
-                        >
-                            0
-                        </span>
-                    </button>
-
-                    <button
-                        type="button"
-                        class="icon-button"
-                        data-action="open-search"
-                        aria-label="Cerca"
-                    >
-                        🔎
-                    </button>
-
-                </div>
-
-            </header>
-
-
-            <!-- =================================================
-                 PAGE CONTAINER
-            ================================================== -->
-
-            <main id="page-container">
-
-
-                <!-- =============================================
-                     HOME
-                ============================================== -->
-
-                <section
-                    id="page-home"
-                    class="page active"
-                    data-page="home"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-                            <p
-                                id="home-greeting"
-                                class="eyebrow"
-                            >
-                                Buongiorno
-                            </p>
-
-                            <h1 data-i18n="home.title">
-                                Cosa facciamo?
-                            </h1>
-                        </div>
-
-                    </div>
-
-
-                    <!-- MOMENTO LIBERO -->
-
-                    <article class="smart-card">
-
-                        <div class="smart-card-icon">
-                            ✨
-                        </div>
-
-                        <div class="smart-card-content">
-
-                            <span
-                                class="card-label"
-                                data-i18n="home.smart.label"
-                            >
-                                SYNC ha trovato
-                            </span>
-
-                            <h2
-                                data-i18n="home.smart.title"
-                            >
-                                Un momento libero
-                            </h2>
-
-                            <p id="best-free-time">
-                                Sabato sera siete liberi in 7.
-                            </p>
-
-                            <button
-                                type="button"
-                                class="primary-button compact"
-                                data-action="create-from-free-time"
-                                data-i18n="home.smart.button"
-                            >
-                                Organizza qualcosa
-                            </button>
-
-                        </div>
-
-                    </article>
-
-
-                    <!-- OGGI -->
-
-                    <section class="content-section">
-
-                        <div class="section-header">
-
-                            <h2 data-i18n="home.today">
-                                Oggi
-                            </h2>
-
-                            <button
-                                type="button"
-                                class="text-button"
-                                data-action="open-calendar"
-                                data-i18n="common.seeAll"
-                            >
-                                Vedi tutto
-                            </button>
-
-                        </div>
-
-                        <div
-                            id="today-items"
-                            class="timeline-list"
-                        >
-                            <!-- Generato da script.js -->
-                        </div>
-
-                    </section>
-
-
-                    <!-- EVENTI DA DECIDERE -->
-
-                    <section class="content-section">
-
-                        <div class="section-header">
-
-                            <h2 data-i18n="home.pending">
-                                Da decidere
-                            </h2>
-
-                        </div>
-
-                        <div
-                            id="pending-events"
-                            class="event-list"
-                        >
-                            <!-- Generato da script.js -->
-                        </div>
-
-                    </section>
-
-
-                    <!-- DISPONIBILITÀ -->
-
-                    <section class="content-section">
-
-                        <div class="section-header">
-
-                            <h2 data-i18n="home.availability">
-                                Disponibilità
-                            </h2>
-
-                        </div>
-
-                        <article class="availability-card">
-
-                            <div class="availability-header">
-
-                                <div>
-                                    <span
-                                        class="card-label"
-                                        data-i18n="home.nextFree"
-                                    >
-                                        Prossimo momento libero
-                                    </span>
-
-                                    <h3>
-                                        Sabato
-                                    </h3>
-                                </div>
-
-                                <span class="availability-status available">
-                                    🟢
-                                </span>
-
-                            </div>
-
-                            <p>
-                                20:00 – 23:00
-                            </p>
-
-                            <button
-                                type="button"
-                                class="secondary-button compact"
-                                data-action="open-availability"
-                                data-i18n="home.manageAvailability"
-                            >
-                                Gestisci disponibilità
-                            </button>
-
-                        </article>
-
-                    </section>
-
-
-                    <!-- QUICK ACTIONS -->
-
-                    <section class="content-section">
-
-                        <div class="quick-actions">
-
-                            <button
-                                type="button"
-                                class="quick-action"
-                                data-action="create-event"
-                            >
-                                <span>➕</span>
-                                <strong data-i18n="quick.event">
-                                    Organizza
-                                </strong>
-                            </button>
-
-                            <button
-                                type="button"
-                                class="quick-action"
-                                data-action="create-update"
-                            >
-                                <span>💬</span>
-                                <strong data-i18n="quick.update">
-                                    Aggiornamento
-                                </strong>
-                            </button>
-
-                            <button
-                                type="button"
-                                class="quick-action"
-                                data-action="open-friends"
-                            >
-                                <span>👥</span>
-                                <strong data-i18n="quick.friends">
-                                    Amici
-                                </strong>
-                            </button>
-
-                            <button
-                                type="button"
-                                class="quick-action"
-                                data-action="open-calendar"
-                            >
-                                <span>📅</span>
-                                <strong data-i18n="quick.calendar">
-                                    Calendario
-                                </strong>
-                            </button>
-
-                        </div>
-
-                    </section>
-
-                </section>
-
-
-                <!-- =============================================
-                     AMICI
-                ============================================== -->
-
-                <section
-                    id="page-friends"
-                    class="page"
-                    data-page="friends"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-                            <p class="eyebrow">
-                                👥
-                            </p>
-
-                            <h1 data-i18n="friends.title">
-                                Amici
-                            </h1>
-
-                            <p data-i18n="friends.subtitle">
-                                Organizza qualcosa con le persone che conosci.
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            class="icon-button"
-                            data-action="add-friend"
-                            aria-label="Aggiungi amico"
-                        >
-                            ➕
-                        </button>
-
-                    </div>
-
-
-                    <!-- TABS AMICI / PRIVATA -->
-
-                    <div
-                        class="segmented-control"
-                        role="tablist"
-                    >
-
-                        <button
-                            type="button"
-                            class="segment active"
-                            data-friends-tab="all"
-                            role="tab"
-                            aria-selected="true"
-                            data-i18n="friends.all"
-                        >
-                            Tutti
-                        </button>
-
-                        <button
-                            type="button"
-                            class="segment"
-                            data-friends-tab="private"
-                            role="tab"
-                            aria-selected="false"
-                            data-i18n="friends.private"
-                        >
-                            🔒 Privata
-                        </button>
-
-                    </div>
-
-
-                    <!-- LISTA AMICI -->
-
-                    <div
-                        id="friends-list"
-                        class="people-list"
-                    >
-                        <!-- Generato da script.js -->
-                    </div>
-
-
-                    <!-- PRIVACY PUBBLICAZIONE -->
-
-                    <div class="info-card">
-
-                        <span>🔐</span>
-
-                        <div>
-
-                            <strong data-i18n="friends.privacy.title">
-                                Decidi chi vede cosa
-                            </strong>
-
-                            <p data-i18n="friends.privacy.description">
-                                Quando pubblichi qualcosa puoi scegliere tutti gli amici,
-                                la tua privata oppure singole persone.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- =============================================
-                     FAMIGLIA
-                ============================================== -->
-
-                <section
-                    id="page-family"
-                    class="page"
-                    data-page="family"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-
-                            <p class="eyebrow">
-                                👨‍👩‍👧
-                            </p>
-
-                            <h1 data-i18n="family.title">
-                                Famiglia
-                            </h1>
-
-                            <p data-i18n="family.subtitle">
-                                Tutti gli impegni e i programmi della famiglia.
-                            </p>
-
-                        </div>
-
-                        <button
-                            type="button"
-                            class="icon-button"
-                            data-action="family-settings"
-                            aria-label="Impostazioni famiglia"
-                        >
-                            ⚙️
-                        </button>
-
-                    </div>
-
-
-                    <!-- DISPONIBILITÀ FAMIGLIA -->
-
-                    <article class="family-availability-card">
-
-                        <span
-                            class="card-label"
-                            data-i18n="family.nextFree"
-                        >
-                            Prossimo momento libero per tutti
-                        </span>
-
-                        <h2>
-                            Sabato · 20:00
-                        </h2>
-
-                        <p data-i18n="family.everyoneFree">
-                            Tutti disponibili
-                        </p>
-
-                        <button
-                            type="button"
-                            class="primary-button compact"
-                            data-action="create-family-event"
-                            data-i18n="family.organize"
-                        >
-                            Organizza
-                        </button>
-
-                    </article>
-
-
-                    <!-- MEMBRI -->
-
-                    <section class="content-section">
-
-                        <div class="section-header">
-
-                            <h2 data-i18n="family.members">
-                                Membri
-                            </h2>
-
-                            <button
-                                type="button"
-                                class="text-button"
-                                data-action="add-family-member"
-                                data-i18n="common.add"
-                            >
-                                Aggiungi
-                            </button>
-
-                        </div>
-
-                        <div
-                            id="family-members"
-                            class="people-list"
-                        >
-                            <!-- Generato da script.js -->
-                        </div>
-
-                    </section>
-
-
-                    <!-- IMPEGNI -->
-
-                    <section class="content-section">
-
-                        <div class="section-header">
-
-                            <h2 data-i18n="family.commitments">
-                                Impegni
-                            </h2>
-
-                            <button
-                                type="button"
-                                class="text-button"
-                                data-action="create-commitment"
-                                data-i18n="common.add"
-                            >
-                                Aggiungi
-                            </button>
-
-                        </div>
-
-                        <div
-                            id="family-commitments"
-                            class="event-list"
-                        >
-                            <!-- Generato da script.js -->
-                        </div>
-
-                    </section>
-
-                </section>
-
-
-                <!-- =============================================
-                     CALENDARIO
-                ============================================== -->
-
-                <section
-                    id="page-calendar"
-                    class="page"
-                    data-page="calendar"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-
-                            <p class="eyebrow">
-                                📅
-                            </p>
-
-                            <h1 data-i18n="calendar.title">
-                                Calendario
-                            </h1>
-
-                        </div>
-
-                        <button
-                            type="button"
-                            class="primary-button compact"
-                            data-action="create-commitment"
-                            data-i18n="calendar.add"
-                        >
-                            + Impegno
-                        </button>
-
-                    </div>
-
-
-                    <!-- DATA -->
-
-                    <div class="calendar-date-header">
-
-                        <button
-                            type="button"
-                            class="icon-button"
-                            data-action="previous-day"
-                            aria-label="Giorno precedente"
-                        >
-                            ‹
-                        </button>
-
-                        <div>
-                            <strong id="calendar-date">
-                                Sabato 12 settembre
-                            </strong>
-
-                            <span
-                                id="calendar-month"
-                                class="muted"
-                            >
-                                2026
-                            </span>
-                        </div>
-
-                        <button
-                            type="button"
-                            class="icon-button"
-                            data-action="next-day"
-                            aria-label="Giorno successivo"
-                        >
-                            ›
-                        </button>
-
-                    </div>
-
-
-                    <!-- DISPONIBILITÀ PERSONALE -->
-
-                    <article class="availability-settings-card">
-
-                        <div>
-
-                            <span class="card-label">
-                                👁️
-                                <span data-i18n="calendar.visibility">
-                                    Visibilità disponibilità
-                                </span>
-                            </span>
-
-                            <h3 id="availability-visibility">
-                                👥 Tutti gli amici
-                            </h3>
-
-                        </div>
-
-                        <button
-                            type="button"
-                            class="secondary-button compact"
-                            data-action="manage-availability-visibility"
-                            data-i18n="common.edit"
-                        >
-                            Modifica
-                        </button>
-
-                    </article>
-
-
-                    <!-- CALENDARIO -->
-
-                    <div
-                        id="calendar-grid"
-                        class="calendar-grid"
-                    >
-                        <!-- Generato da script.js -->
-                    </div>
-
-
-                    <!-- LEGENDA -->
-
-                    <div class="calendar-legend">
-
-                        <span>
-                            <i class="dot free"></i>
-                            <span data-i18n="calendar.free">
-                                Libero
-                            </span>
-                        </span>
-
-                        <span>
-                            <i class="dot partial"></i>
-                            <span data-i18n="calendar.partial">
-                                Parzialmente disponibile
-                            </span>
-                        </span>
-
-                        <span>
-                            <i class="dot busy"></i>
-                            <span data-i18n="calendar.busy">
-                                Occupato
-                            </span>
-                        </span>
-
-                    </div>
-
-                </section>
-
-
-                <!-- =============================================
-                     EVENTI
-                ============================================== -->
-
-                <section
-                    id="page-events"
-                    class="page"
-                    data-page="events"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-
-                            <p class="eyebrow">
-                                🎯
-                            </p>
-
-                            <h1 data-i18n="events.title">
-                                I tuoi programmi
-                            </h1>
-
-                        </div>
-
-                        <button
-                            type="button"
-                            class="primary-button compact"
-                            data-action="create-event"
-                            data-i18n="events.new"
-                        >
-                            + Organizza
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        class="event-filter"
-                        role="tablist"
-                    >
-
-                        <button
-                            type="button"
-                            class="segment active"
-                            data-event-filter="upcoming"
-                            data-i18n="events.upcoming"
-                        >
-                            In programma
-                        </button>
-
-                        <button
-                            type="button"
-                            class="segment"
-                            data-event-filter="past"
-                            data-i18n="events.past"
-                        >
-                            Passati
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        id="events-list"
-                        class="event-list large"
-                    >
-                        <!-- Generato da script.js -->
-                    </div>
-
-                </section>
-
-
-                <!-- =============================================
-                     NOTIFICHE
-                ============================================== -->
-
-                <section
-                    id="page-notifications"
-                    class="page"
-                    data-page="notifications"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-
-                            <p class="eyebrow">
-                                🔔
-                            </p>
-
-                            <h1 data-i18n="notifications.title">
-                                Notifiche
-                            </h1>
-
-                        </div>
-
-                        <button
-                            type="button"
-                            class="text-button"
-                            data-action="mark-notifications-read"
-                            data-i18n="notifications.markRead"
-                        >
-                            Segna come lette
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        id="notifications-list"
-                        class="notification-list"
-                    >
-                        <!-- Generato da script.js -->
-                    </div>
-
-                </section>
-
-
-                <!-- =============================================
-                     PROFILO
-                ============================================== -->
-
-                <section
-                    id="page-profile"
-                    class="page"
-                    data-page="profile"
-                >
-
-                    <div class="profile-header">
-
-                        <div
-                            id="profile-avatar"
-                            class="profile-avatar"
-                        >
-                            👤
-                        </div>
-
-                        <button
-                            type="button"
-                            class="secondary-button compact"
-                            data-action="edit-profile"
-                            data-i18n="profile.edit"
-                        >
-                            Modifica profilo
-                        </button>
-
-                        <h1 id="profile-display-name">
-                            Nome
-                        </h1>
-
-                        <p id="profile-username">
-                            @username
-                        </p>
-
-                        <p id="profile-bio">
-                            La tua bio
-                        </p>
-
-                    </div>
-
-
-                    <!-- PROFILO STATS -->
-
-                    <div class="profile-stats">
-
-                        <div>
-                            <strong id="profile-friends-count">
-                                0
-                            </strong>
-
-                            <span data-i18n="profile.friends">
-                                Amici
-                            </span>
-                        </div>
-
-                        <div>
-                            <strong id="profile-private-count">
-                                0
-                            </strong>
-
-                            <span data-i18n="profile.private">
-                                Privata
-                            </span>
-                        </div>
-
-                        <div>
-                            <strong id="profile-events-count">
-                                0
-                            </strong>
-
-                            <span data-i18n="profile.events">
-                                Eventi
-                            </span>
-                        </div>
-
-                    </div>
-
-
-                    <!-- MENU PROFILO -->
-
-                    <div class="settings-list">
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="open-friends"
-                        >
-                            <span>👥</span>
-                            <span data-i18n="profile.manageFriends">
-                                Gestisci amici
-                            </span>
-                            <span>›</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="open-private-list"
-                        >
-                            <span>🔒</span>
-                            <span data-i18n="profile.privateList">
-                                Lista privata
-                            </span>
-                            <span>›</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="open-privacy"
-                        >
-                            <span>🛡️</span>
-                            <span data-i18n="profile.privacy">
-                                Privacy e sicurezza
-                            </span>
-                            <span>›</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="open-settings"
-                        >
-                            <span>⚙️</span>
-                            <span data-i18n="profile.settings">
-                                Impostazioni
-                            </span>
-                            <span>›</span>
-                        </button>
-
-                    </div>
-
-
-                    <button
-                        type="button"
-                        class="danger-button"
-                        data-action="logout"
-                        data-i18n="auth.logout"
-                    >
-                        Esci dall'account
-                    </button>
-
-                </section>
-
-
-                <!-- =============================================
-                     IMPOSTAZIONI
-                ============================================== -->
-
-                <section
-                    id="page-settings"
-                    class="page"
-                    data-page="settings"
-                >
-
-                    <div class="page-heading">
-
-                        <div>
-
-                            <p class="eyebrow">
-                                ⚙️
-                            </p>
-
-                            <h1 data-i18n="settings.title">
-                                Impostazioni
-                            </h1>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- PRIVACY -->
-
-                    <section class="settings-section">
-
-                        <h2 data-i18n="settings.privacy">
-                            Privacy
-                        </h2>
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="manage-availability-visibility"
-                        >
-                            <span>👁️</span>
-
-                            <div>
-                                <strong data-i18n="settings.availabilityVisibility">
-                                    Visibilità disponibilità
-                                </strong>
-
-                                <small data-i18n="settings.availabilityDescription">
-                                    Decidi chi può vedere quando sei libero.
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="open-private-list"
-                        >
-                            <span>🔒</span>
-
-                            <div>
-                                <strong data-i18n="settings.privateList">
-                                    Lista privata
-                                </strong>
-
-                                <small data-i18n="settings.privateDescription">
-                                    Gestisci le persone della tua privata.
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="open-blocked-users"
-                        >
-                            <span>🚫</span>
-
-                            <div>
-                                <strong data-i18n="settings.blocked">
-                                    Utenti bloccati
-                                </strong>
-
-                                <small data-i18n="settings.blockedDescription">
-                                    Gestisci gli utenti che hai bloccato.
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-                    </section>
-
-
-                    <!-- ACCOUNT -->
-
-                    <section class="settings-section">
-
-                        <h2 data-i18n="settings.account">
-                            Account
-                        </h2>
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="change-password"
-                        >
-                            <span>🔑</span>
-
-                            <div>
-                                <strong data-i18n="settings.password">
-                                    Password
-                                </strong>
-
-                                <small data-i18n="settings.passwordDescription">
-                                    Modifica la password del tuo account.
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="delete-account"
-                        >
-                            <span>🗑️</span>
-
-                            <div>
-                                <strong data-i18n="settings.deleteAccount">
-                                    Elimina account
-                                </strong>
-
-                                <small data-i18n="settings.deleteDescription">
-                                    Elimina definitivamente il tuo account.
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-                    </section>
-
-
-                    <!-- APP -->
-
-                    <section class="settings-section">
-
-                        <h2 data-i18n="settings.app">
-                            App
-                        </h2>
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="change-language"
-                        >
-                            <span>🌍</span>
-
-                            <div>
-                                <strong data-i18n="settings.language">
-                                    Lingua
-                                </strong>
-
-                                <small id="current-language">
-                                    Italiano
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="toggle-theme"
-                        >
-                            <span>🌙</span>
-
-                            <div>
-                                <strong data-i18n="settings.theme">
-                                    Aspetto
-                                </strong>
-
-                                <small id="current-theme">
-                                    Sistema
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="settings-item"
-                            data-action="notification-settings"
-                        >
-                            <span>🔔</span>
-
-                            <div>
-                                <strong data-i18n="settings.notifications">
-                                    Notifiche
-                                </strong>
-
-                                <small data-i18n="settings.notificationsDescription">
-                                    Gestisci le notifiche di SYNC.
-                                </small>
-                            </div>
-
-                            <span>›</span>
-                        </button>
-
-                    </section>
-
-                </section>
-
-
-                <!-- =============================================
-                     SEARCH
-                ============================================== -->
-
-                <section
-                    id="page-search"
-                    class="page"
-                    data-page="search"
-                >
-
-                    <div class="search-header">
-
-                        <button
-                            type="button"
-                            class="icon-button"
-                            data-action="go-back"
-                            aria-label="Indietro"
-                        >
-                            ‹
-                        </button>
-
-                        <div class="search-input-wrapper">
-
-                            <span>🔎</span>
-
-                            <input
-                                id="global-search"
-                                type="search"
-                                autocomplete="off"
-                                placeholder="Cerca persone..."
-                                data-i18n-placeholder="search.placeholder"
-                            >
-
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        id="search-results"
-                        class="search-results"
-                    >
-                        <!-- Generato da script.js -->
-                    </div>
-
-                </section>
-
-            </main>
-
-
-            <!-- =================================================
-                 BOTTOM NAVIGATION
-            ================================================== -->
-
-            <nav
-                class="bottom-navigation"
-                aria-label="Navigazione principale"
-            >
-
-                <button
-                    type="button"
-                    class="nav-item active"
-                    data-page-target="home"
-                >
-                    <span>🏠</span>
-                    <span data-i18n="nav.home">
-                        Home
-                    </span>
-                </button>
-
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-page-target="friends"
-                >
-                    <span>👥</span>
-                    <span data-i18n="nav.friends">
-                        Amici
-                    </span>
-                </button>
-
-                <button
-                    type="button"
-                    class="nav-item create-nav-button"
-                    data-action="create-event"
-                    aria-label="Organizza qualcosa"
-                >
-                    <span>＋</span>
-                </button>
-
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-page-target="calendar"
-                >
-                    <span>📅</span>
-                    <span data-i18n="nav.calendar">
-                        Calendario
-                    </span>
-                </button>
-
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-page-target="profile"
-                >
-                    <span>👤</span>
-                    <span data-i18n="nav.profile">
-                        Profilo
-                    </span>
-                </button>
-
-            </nav>
-
-        </section>
-
-
-        <!-- =====================================================
-             GLOBAL MODAL
-        ====================================================== -->
-
-        <div
-            id="global-modal"
-            class="modal hidden"
-            aria-hidden="true"
-        >
-
-            <div
-                class="modal-backdrop"
-                data-action="close-modal"
-            ></div>
-
-            <div
-                class="modal-content"
-                role="dialog"
-                aria-modal="true"
-            >
-
-                <button
-                    type="button"
-                    class="modal-close"
-                    data-action="close-modal"
-                    aria-label="Chiudi"
-                >
-                    ×
-                </button>
-
-                <div id="modal-body">
-                    <!-- Contenuto dinamico -->
-                </div>
-
-            </div>
+            <h1>SYNC</h1>
+
+            <p data-i18n="auth.tagline">
+                Organizza tutto insieme.
+            </p>
 
         </div>
 
 
-        <!-- =====================================================
-             TOAST
-        ====================================================== -->
+        <!-- LOGIN -->
 
-        <div
-            id="toast-container"
-            class="toast-container"
-            aria-live="polite"
-            aria-atomic="true"
-        ></div>
+        <div id="login-view" class="auth-view">
 
+            <h2 data-i18n="auth.login.title">
+                Bentornato
+            </h2>
 
-        <!-- =====================================================
-             LOADING
-        ====================================================== -->
-
-        <div
-            id="loading-overlay"
-            class="loading-overlay hidden"
-            aria-hidden="true"
-        >
-            <div class="loading-spinner"></div>
-
-            <p data-i18n="common.loading">
-                Caricamento...
+            <p data-i18n="auth.login.subtitle">
+                Accedi al tuo account SYNC.
             </p>
+
+            <form id="login-form" novalidate>
+
+                <label for="login-email" data-i18n="auth.email">
+                    Email
+                </label>
+
+                <input
+                    id="login-email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    required
+                >
+
+                <label for="login-password" data-i18n="auth.password">
+                    Password
+                </label>
+
+                <input
+                    id="login-password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="submit" class="primary-button">
+                    <span data-i18n="auth.login.button">
+                        Accedi
+                    </span>
+                </button>
+
+            </form>
+
+            <button
+                type="button"
+                class="text-button"
+                data-action="forgot-password"
+                data-i18n="auth.forgot"
+            >
+                Hai dimenticato la password?
+            </button>
+
+            <div class="auth-divider">
+                <span data-i18n="common.or">
+                    oppure
+                </span>
+            </div>
+
+            <button
+                type="button"
+                class="secondary-button"
+                data-action="show-register"
+                data-i18n="auth.register"
+            >
+                Crea un account
+            </button>
+
+        </div>
+
+
+        <!-- REGISTER -->
+
+        <div id="register-view" class="auth-view hidden">
+
+            <h2 data-i18n="auth.register.title">
+                Crea il tuo account
+            </h2>
+
+            <p data-i18n="auth.register.subtitle">
+                Entra in SYNC e inizia a organizzare.
+            </p>
+
+            <form id="register-form" novalidate>
+
+                <label
+                    for="register-name"
+                    data-i18n="auth.displayName"
+                >
+                    Nome visualizzato
+                </label>
+
+                <input
+                    id="register-name"
+                    name="displayName"
+                    type="text"
+                    autocomplete="name"
+                    maxlength="40"
+                    required
+                >
+
+
+                <label
+                    for="register-username"
+                    data-i18n="auth.username"
+                >
+                    Nome utente
+                </label>
+
+                <input
+                    id="register-username"
+                    name="username"
+                    type="text"
+                    autocomplete="username"
+                    maxlength="30"
+                    placeholder="@nomeutente"
+                    required
+                >
+
+
+                <label
+                    for="register-email"
+                    data-i18n="auth.email"
+                >
+                    Email
+                </label>
+
+                <input
+                    id="register-email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    required
+                >
+
+
+                <label
+                    for="register-password"
+                    data-i18n="auth.password"
+                >
+                    Password
+                </label>
+
+                <input
+                    id="register-password"
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    required
+                >
+
+
+                <label
+                    for="register-password-confirm"
+                    data-i18n="auth.confirmPassword"
+                >
+                    Conferma password
+                </label>
+
+                <input
+                    id="register-password-confirm"
+                    name="passwordConfirm"
+                    type="password"
+                    autocomplete="new-password"
+                    required
+                >
+
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                    data-i18n="auth.register.button"
+                >
+                    Registrati
+                </button>
+
+            </form>
+
+            <button
+                type="button"
+                class="text-button"
+                data-action="show-login"
+                data-i18n="auth.haveAccount"
+            >
+                Hai già un account? Accedi
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     MAIN APP
+===================================================== -->
+
+<section id="main-app" class="screen app-screen hidden">
+
+
+<!-- TOPBAR -->
+
+<header class="topbar">
+
+    <div class="topbar-left">
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="open-profile"
+            aria-label="Profilo"
+        >
+            <span id="header-avatar">👤</span>
+        </button>
+
+        <div class="header-brand">
+
+            <strong>SYNC</strong>
+
+            <span class="brand-pulse"></span>
+
         </div>
 
     </div>
 
 
-    <!-- =========================================================
-         JAVASCRIPT
-         Verrà collegato nella fase successiva.
-    ========================================================== -->
+    <div class="topbar-actions">
 
-    <script src="script.js" defer></script>
+        <button
+            type="button"
+            class="icon-button"
+            data-action="open-notifications"
+            aria-label="Notifiche"
+        >
+            🔔
+
+            <span
+                id="notification-badge"
+                class="notification-badge hidden"
+            >
+                0
+            </span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="open-search"
+            aria-label="Cerca"
+        >
+            🔎
+        </button>
+
+    </div>
+
+</header>
+
+
+<!-- =====================================================
+     PAGES
+===================================================== -->
+
+<main id="page-container">
+
+
+<!-- HOME -->
+
+<section
+    id="page-home"
+    class="page active"
+    data-page="home"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p
+                id="home-greeting"
+                class="eyebrow"
+            >
+                Buongiorno
+            </p>
+
+            <h1 data-i18n="home.title">
+                Cosa facciamo?
+            </h1>
+
+        </div>
+
+    </div>
+
+
+    <!-- SMART MOMENT -->
+
+    <article class="smart-card">
+
+        <div class="smart-card-icon">
+            ✨
+        </div>
+
+        <div class="smart-card-content">
+
+            <span
+                class="card-label"
+                data-i18n="home.smart.label"
+            >
+                SYNC ha trovato
+            </span>
+
+            <h2 data-i18n="home.smart.title">
+                Un momento libero
+            </h2>
+
+            <p id="best-free-time">
+                Sabato sera siete liberi in 7.
+            </p>
+
+            <button
+                type="button"
+                class="primary-button compact"
+                data-action="create-from-free-time"
+                data-i18n="home.smart.button"
+            >
+                Organizza qualcosa
+            </button>
+
+        </div>
+
+    </article>
+
+
+    <!-- TODAY -->
+
+    <section class="content-section">
+
+        <div class="section-header">
+
+            <h2 data-i18n="home.today">
+                Oggi
+            </h2>
+
+            <button
+                type="button"
+                class="text-button"
+                data-action="open-calendar"
+                data-i18n="common.seeAll"
+            >
+                Vedi tutto
+            </button>
+
+        </div>
+
+        <div
+            id="today-items"
+            class="timeline-list"
+        ></div>
+
+    </section>
+
+
+    <!-- PENDING -->
+
+    <section class="content-section">
+
+        <div class="section-header">
+
+            <h2 data-i18n="home.pending">
+                Da decidere
+            </h2>
+
+        </div>
+
+        <div
+            id="pending-events"
+            class="event-list"
+        ></div>
+
+    </section>
+
+
+    <!-- AVAILABILITY -->
+
+    <section class="content-section">
+
+        <div class="section-header">
+
+            <h2 data-i18n="home.availability">
+                Disponibilità
+            </h2>
+
+        </div>
+
+
+        <article class="availability-card">
+
+            <div class="availability-header">
+
+                <div>
+
+                    <span
+                        class="card-label"
+                        data-i18n="home.nextFree"
+                    >
+                        Prossimo momento libero
+                    </span>
+
+                    <h3 id="home-next-day">
+                        Sabato
+                    </h3>
+
+                </div>
+
+                <span class="availability-status available">
+                    🟢
+                </span>
+
+            </div>
+
+            <p id="home-next-time">
+                20:00 – 23:00
+            </p>
+
+            <button
+                type="button"
+                class="secondary-button compact"
+                data-action="open-availability"
+                data-i18n="home.manageAvailability"
+            >
+                Gestisci disponibilità
+            </button>
+
+        </article>
+
+    </section>
+
+
+    <!-- QUICK ACTIONS -->
+
+    <section class="content-section">
+
+        <div class="quick-actions">
+
+            <button
+                type="button"
+                class="quick-action qa-violet"
+                data-action="create-event"
+            >
+                <span>➕</span>
+                <strong data-i18n="quick.event">
+                    Organizza
+                </strong>
+            </button>
+
+
+            <button
+                type="button"
+                class="quick-action qa-pink"
+                data-action="create-update"
+            >
+                <span>💬</span>
+                <strong data-i18n="quick.update">
+                    Aggiornamento
+                </strong>
+            </button>
+
+
+            <button
+                type="button"
+                class="quick-action qa-blue"
+                data-action="open-friends"
+            >
+                <span>👥</span>
+                <strong data-i18n="quick.friends">
+                    Amici
+                </strong>
+            </button>
+
+
+            <button
+                type="button"
+                class="quick-action qa-orange"
+                data-action="open-calendar"
+            >
+                <span>📅</span>
+                <strong data-i18n="quick.calendar">
+                    Calendario
+                </strong>
+            </button>
+
+        </div>
+
+    </section>
+
+</section>
+
+
+<!-- =====================================================
+     FRIENDS
+===================================================== -->
+
+<section
+    id="page-friends"
+    class="page"
+    data-page="friends"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p class="eyebrow">
+                👥
+            </p>
+
+            <h1 data-i18n="friends.title">
+                Amici
+            </h1>
+
+            <p data-i18n="friends.subtitle">
+                Organizza qualcosa con le persone che conosci.
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="add-friend"
+            aria-label="Aggiungi amico"
+        >
+            ➕
+        </button>
+
+    </div>
+
+
+    <div class="segmented-control">
+
+        <button
+            type="button"
+            class="segment active"
+            data-friends-tab="all"
+            data-i18n="friends.all"
+        >
+            Tutti
+        </button>
+
+        <button
+            type="button"
+            class="segment"
+            data-friends-tab="private"
+            data-i18n="friends.private"
+        >
+            🔒 Privati
+        </button>
+
+    </div>
+
+
+    <div
+        id="friends-list"
+        class="people-list"
+    ></div>
+
+
+    <div class="info-card">
+
+        <span>
+            🔐
+        </span>
+
+        <div>
+
+            <strong data-i18n="friends.privacy.title">
+                Decidi chi vede cosa
+            </strong>
+
+            <p data-i18n="friends.privacy.description">
+                Quando pubblichi qualcosa puoi scegliere tutti gli amici,
+                i privati oppure singole persone.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     FAMILY
+===================================================== -->
+
+<section
+    id="page-family"
+    class="page"
+    data-page="family"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p class="eyebrow">
+                👨‍👩‍👧
+            </p>
+
+            <h1 data-i18n="family.title">
+                Famiglia
+            </h1>
+
+            <p data-i18n="family.subtitle">
+                Tutti gli impegni e i programmi della famiglia.
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="family-settings"
+            aria-label="Impostazioni famiglia"
+        >
+            ⚙️
+        </button>
+
+    </div>
+
+
+    <article class="family-availability-card">
+
+        <span
+            class="card-label"
+            data-i18n="family.nextFree"
+        >
+            Prossimo momento libero per tutti
+        </span>
+
+        <h2>
+            Sabato · 20:00
+        </h2>
+
+        <p data-i18n="family.everyoneFree">
+            Tutti disponibili
+        </p>
+
+        <button
+            type="button"
+            class="primary-button compact"
+            data-action="create-family-event"
+            data-i18n="family.organize"
+        >
+            Organizza
+        </button>
+
+    </article>
+
+
+    <section class="content-section">
+
+        <div class="section-header">
+
+            <h2 data-i18n="family.members">
+                Membri
+            </h2>
+
+            <button
+                type="button"
+                class="text-button"
+                data-action="add-family-member"
+                data-i18n="common.add"
+            >
+                Aggiungi
+            </button>
+
+        </div>
+
+        <div
+            id="family-members"
+            class="people-list"
+        ></div>
+
+    </section>
+
+
+    <section class="content-section">
+
+        <div class="section-header">
+
+            <h2 data-i18n="family.commitments">
+                Impegni
+            </h2>
+
+            <button
+                type="button"
+                class="text-button"
+                data-action="create-commitment"
+                data-i18n="common.add"
+            >
+                Aggiungi
+            </button>
+
+        </div>
+
+        <div
+            id="family-commitments"
+            class="event-list"
+        ></div>
+
+    </section>
+
+</section>
+
+
+<!-- =====================================================
+     CALENDAR
+===================================================== -->
+
+<section
+    id="page-calendar"
+    class="page"
+    data-page="calendar"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p class="eyebrow">
+                📅
+            </p>
+
+            <h1 data-i18n="calendar.title">
+                Calendario
+            </h1>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="primary-button compact"
+            data-action="create-commitment"
+            data-i18n="calendar.add"
+        >
+            + Impegno
+        </button>
+
+    </div>
+
+
+    <div class="calendar-date-header">
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="previous-day"
+            aria-label="Giorno precedente"
+        >
+            ‹
+        </button>
+
+
+        <div>
+
+            <strong id="calendar-date">
+                Sabato 12 settembre
+            </strong>
+
+            <span
+                id="calendar-month"
+                class="muted"
+            >
+                2026
+            </span>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="next-day"
+            aria-label="Giorno successivo"
+        >
+            ›
+        </button>
+
+    </div>
+
+
+    <article class="availability-settings-card">
+
+        <div>
+
+            <span class="card-label">
+
+                👁️
+
+                <span data-i18n="calendar.visibility">
+                    Visibilità disponibilità
+                </span>
+
+            </span>
+
+            <h3 id="availability-visibility">
+                👥 Tutti gli amici
+            </h3>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="secondary-button compact"
+            data-action="manage-availability-visibility"
+            data-i18n="common.edit"
+        >
+            Modifica
+        </button>
+
+    </article>
+
+
+    <div
+        id="calendar-grid"
+        class="calendar-grid"
+    ></div>
+
+
+    <div class="calendar-legend">
+
+        <span>
+            <i class="dot free"></i>
+            <span data-i18n="calendar.free">
+                Libero
+            </span>
+        </span>
+
+        <span>
+            <i class="dot partial"></i>
+            <span data-i18n="calendar.partial">
+                Parzialmente disponibile
+            </span>
+        </span>
+
+        <span>
+            <i class="dot busy"></i>
+            <span data-i18n="calendar.busy">
+                Occupato
+            </span>
+        </span>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     EVENTS
+===================================================== -->
+
+<section
+    id="page-events"
+    class="page"
+    data-page="events"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p class="eyebrow">
+                🎯
+            </p>
+
+            <h1 data-i18n="events.title">
+                I tuoi programmi
+            </h1>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="primary-button compact"
+            data-action="create-event"
+            data-i18n="events.new"
+        >
+            + Organizza
+        </button>
+
+    </div>
+
+
+    <div class="event-filter">
+
+        <button
+            type="button"
+            class="segment active"
+            data-event-filter="upcoming"
+            data-i18n="events.upcoming"
+        >
+            In programma
+        </button>
+
+        <button
+            type="button"
+            class="segment"
+            data-event-filter="past"
+            data-i18n="events.past"
+        >
+            Passati
+        </button>
+
+    </div>
+
+
+    <div
+        id="events-list"
+        class="event-list large"
+    ></div>
+
+</section>
+
+
+<!-- =====================================================
+     NOTIFICATIONS
+===================================================== -->
+
+<section
+    id="page-notifications"
+    class="page"
+    data-page="notifications"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p class="eyebrow">
+                🔔
+            </p>
+
+            <h1 data-i18n="notifications.title">
+                Notifiche
+            </h1>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="text-button"
+            data-action="mark-notifications-read"
+            data-i18n="notifications.markRead"
+        >
+            Segna come lette
+        </button>
+
+    </div>
+
+
+    <div
+        id="notifications-list"
+        class="notification-list"
+    ></div>
+
+</section>
+
+
+<!-- =====================================================
+     PROFILE
+===================================================== -->
+
+<section
+    id="page-profile"
+    class="page"
+    data-page="profile"
+>
+
+    <div class="profile-header">
+
+        <div
+            id="profile-avatar"
+            class="profile-avatar"
+        >
+            👤
+        </div>
+
+
+        <button
+            type="button"
+            class="secondary-button compact"
+            data-action="edit-profile"
+            data-i18n="profile.edit"
+        >
+            Modifica profilo
+        </button>
+
+
+        <h1 id="profile-display-name">
+            Nome
+        </h1>
+
+        <p id="profile-username">
+            @username
+        </p>
+
+        <p id="profile-bio">
+            La tua bio
+        </p>
+
+    </div>
+
+
+    <div class="profile-stats">
+
+        <div>
+            <strong id="profile-friends-count">
+                0
+            </strong>
+
+            <span data-i18n="profile.friends">
+                Amici
+            </span>
+        </div>
+
+
+        <div>
+            <strong id="profile-private-count">
+                0
+            </strong>
+
+            <span data-i18n="profile.private">
+                Privati
+            </span>
+        </div>
+
+
+        <div>
+            <strong id="profile-events-count">
+                0
+            </strong>
+
+            <span data-i18n="profile.events">
+                Eventi
+            </span>
+        </div>
+
+    </div>
+
+
+    <div class="settings-list">
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="open-friends"
+        >
+            <span>👥</span>
+
+            <span data-i18n="profile.manageFriends">
+                Gestisci amici
+            </span>
+
+            <span>›</span>
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="open-private-list"
+        >
+            <span>🔒</span>
+
+            <span data-i18n="profile.privateList">
+                Lista privata
+            </span>
+
+            <span>›</span>
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="open-privacy"
+        >
+            <span>🛡️</span>
+
+            <span data-i18n="profile.privacy">
+                Privacy e sicurezza
+            </span>
+
+            <span>›</span>
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="open-settings"
+        >
+            <span>⚙️</span>
+
+            <span data-i18n="profile.settings">
+                Impostazioni
+            </span>
+
+            <span>›</span>
+        </button>
+
+    </div>
+
+
+    <button
+        type="button"
+        class="danger-button"
+        data-action="logout"
+        data-i18n="auth.logout"
+    >
+        Esci dall'account
+    </button>
+
+</section>
+
+
+<!-- =====================================================
+     SETTINGS
+===================================================== -->
+
+<section
+    id="page-settings"
+    class="page"
+    data-page="settings"
+>
+
+    <div class="page-heading">
+
+        <div>
+
+            <p class="eyebrow">
+                ⚙️
+            </p>
+
+            <h1 data-i18n="settings.title">
+                Impostazioni
+            </h1>
+
+        </div>
+
+    </div>
+
+
+    <section class="settings-section">
+
+        <h2 data-i18n="settings.privacy">
+            Privacy
+        </h2>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="manage-availability-visibility"
+        >
+
+            <span>👁️</span>
+
+            <div>
+
+                <strong data-i18n="settings.availabilityVisibility">
+                    Visibilità disponibilità
+                </strong>
+
+                <small data-i18n="settings.availabilityDescription">
+                    Decidi chi può vedere quando sei libero.
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="open-private-list"
+        >
+
+            <span>🔒</span>
+
+            <div>
+
+                <strong data-i18n="settings.privateList">
+                    Lista privata
+                </strong>
+
+                <small data-i18n="settings.privateDescription">
+                    Gestisci le persone dei tuoi privati.
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="open-blocked-users"
+        >
+
+            <span>🚫</span>
+
+            <div>
+
+                <strong data-i18n="settings.blocked">
+                    Utenti bloccati
+                </strong>
+
+                <small data-i18n="settings.blockedDescription">
+                    Gestisci gli utenti che hai bloccato.
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+    </section>
+
+
+    <section class="settings-section">
+
+        <h2 data-i18n="settings.account">
+            Account
+        </h2>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="change-password"
+        >
+
+            <span>🔑</span>
+
+            <div>
+
+                <strong data-i18n="settings.password">
+                    Password
+                </strong>
+
+                <small data-i18n="settings.passwordDescription">
+                    Modifica la password del tuo account.
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="delete-account"
+        >
+
+            <span>🗑️</span>
+
+            <div>
+
+                <strong data-i18n="settings.deleteAccount">
+                    Elimina account
+                </strong>
+
+                <small data-i18n="settings.deleteDescription">
+                    Elimina definitivamente il tuo account.
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+    </section>
+
+
+    <section class="settings-section">
+
+        <h2 data-i18n="settings.app">
+            App
+        </h2>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="change-language"
+        >
+
+            <span>🌍</span>
+
+            <div>
+
+                <strong data-i18n="settings.language">
+                    Lingua
+                </strong>
+
+                <small id="current-language">
+                    Italiano
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="toggle-theme"
+        >
+
+            <span>🌙</span>
+
+            <div>
+
+                <strong data-i18n="settings.theme">
+                    Aspetto
+                </strong>
+
+                <small id="current-theme">
+                    Sistema
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+
+        <button
+            type="button"
+            class="settings-item"
+            data-action="notification-settings"
+        >
+
+            <span>🔔</span>
+
+            <div>
+
+                <strong data-i18n="settings.notifications">
+                    Notifiche
+                </strong>
+
+                <small data-i18n="settings.notificationsDescription">
+                    Gestisci le notifiche di SYNC.
+                </small>
+
+            </div>
+
+            <span>›</span>
+
+        </button>
+
+    </section>
+
+</section>
+
+
+<!-- =====================================================
+     SEARCH
+===================================================== -->
+
+<section
+    id="page-search"
+    class="page"
+    data-page="search"
+>
+
+    <div class="search-header">
+
+        <button
+            type="button"
+            class="icon-button"
+            data-action="go-back"
+            aria-label="Indietro"
+        >
+            ‹
+        </button>
+
+
+        <div class="search-input-wrapper">
+
+            <span>
+                🔎
+            </span>
+
+            <input
+                id="global-search"
+                type="search"
+                autocomplete="off"
+                placeholder="Cerca persone..."
+                data-i18n-placeholder="search.placeholder"
+            >
+
+        </div>
+
+    </div>
+
+
+    <div
+        id="search-results"
+        class="search-results"
+    ></div>
+
+</section>
+
+</main>
+
+
+<!-- =====================================================
+     BOTTOM NAVIGATION
+===================================================== -->
+
+<nav
+    class="bottom-navigation"
+    aria-label="Navigazione principale"
+>
+
+    <button
+        type="button"
+        class="nav-item active"
+        data-page-target="home"
+    >
+        <span>🏠</span>
+        <span data-i18n="nav.home">
+            Home
+        </span>
+    </button>
+
+
+    <button
+        type="button"
+        class="nav-item"
+        data-page-target="friends"
+    >
+        <span>👥</span>
+        <span data-i18n="nav.friends">
+            Amici
+        </span>
+    </button>
+
+
+    <button
+        type="button"
+        class="nav-item create-nav-button"
+        data-action="create-event"
+        aria-label="Organizza qualcosa"
+    >
+        <span>
+            ＋
+        </span>
+    </button>
+
+
+    <button
+        type="button"
+        class="nav-item"
+        data-page-target="calendar"
+    >
+        <span>📅</span>
+        <span data-i18n="nav.calendar">
+            Calendario
+        </span>
+    </button>
+
+
+    <button
+        type="button"
+        class="nav-item"
+        data-page-target="profile"
+    >
+        <span>👤</span>
+        <span data-i18n="nav.profile">
+            Profilo
+        </span>
+    </button>
+
+</nav>
+
+</section>
+
+
+<!-- =====================================================
+     MODAL
+===================================================== -->
+
+<div
+    id="global-modal"
+    class="modal hidden"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-backdrop"
+        data-action="close-modal"
+    ></div>
+
+
+    <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+    >
+
+        <button
+            type="button"
+            class="modal-close"
+            data-action="close-modal"
+            aria-label="Chiudi"
+        >
+            ×
+        </button>
+
+
+        <div id="modal-body"></div>
+
+    </div>
+
+</div>
+
+
+<!-- TOAST -->
+
+<div
+    id="toast-container"
+    class="toast-container"
+    aria-live="polite"
+    aria-atomic="true"
+></div>
+
+
+<!-- LOADING -->
+
+<div
+    id="loading-overlay"
+    class="loading-overlay hidden"
+    aria-hidden="true"
+>
+
+    <div class="loading-spinner"></div>
+
+    <p data-i18n="common.loading">
+        Caricamento...
+    </p>
+
+</div>
+
+
+</div>
+
+<script src="script.js" defer></script>
 
 </body>
 </html>
