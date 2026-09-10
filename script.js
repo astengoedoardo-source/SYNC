@@ -1,4258 +1,5912 @@
 "use strict";
 
-/*
-===========================================================
- SYNC
- Frontend application logic
- Versione completa frontend + collegamento Worker
-===========================================================
-*/
+/* =========================================================
+   SYNC — APP LOGIC
+   Demo auth/data are local-only for now.
+   Search uses the Cloudflare Worker.
+   ========================================================= */
 
-const SYNC_WORKER_URL =
-    "https://sync2.astengoedoardo.workers.dev";
+const WORKER_SEARCH_URL =
+  "https://sync2.astengoedoardo.workers.dev/search";
 
-const SYNC = {
-    version: "1.1.0",
-
-    languages: ["it", "en", "es", "fr"],
-
-    state: {
-        currentPage: "home",
-        friendsTab: "all",
-        eventFilter: "upcoming",
-
-        language:
-            localStorage.getItem("sync_language") || "it",
-
-        theme:
-            localStorage.getItem("sync_theme") || "system",
-
-        currentUser: JSON.parse(
-            localStorage.getItem("sync_user") || "null"
-        ),
-
-        friends: JSON.parse(
-            localStorage.getItem("sync_friends") || "[]"
-        ),
-
-        privateFriends: JSON.parse(
-            localStorage.getItem("sync_private") || "[]"
-        ),
-
-        events: JSON.parse(
-            localStorage.getItem("sync_events") || "[]"
-        ),
-
-        commitments: JSON.parse(
-            localStorage.getItem("sync_commitments") || "[]"
-        ),
-
-        notifications: JSON.parse(
-            localStorage.getItem("sync_notifications") || "[]"
-        ),
-
-        availabilityVisibility:
-            localStorage.getItem(
-                "sync_availability_visibility"
-            ) || "friends"
-    }
+const KEYS = {
+  accounts: "sync_demo_accounts_v5",
+  session: "sync_demo_session_v5",
+  data: "sync_demo_data_v5",
+  settings: "sync_demo_settings_v5"
 };
 
 
 /* =========================================================
    TRANSLATIONS
-========================================================= */
+   ========================================================= */
 
-const translations = {
+const I18N = {
 
-    it: {
-        "auth.tagline": "Organizza tutto insieme.",
-        "auth.login.title": "Bentornato",
-        "auth.login.subtitle": "Accedi al tuo account SYNC.",
-        "auth.email": "Email",
-        "auth.password": "Password",
-        "auth.login.button": "Accedi",
-        "auth.forgot": "Hai dimenticato la password?",
-        "auth.register": "Crea un account",
-        "auth.register.title": "Crea il tuo account",
-        "auth.register.subtitle": "Entra in SYNC e inizia a organizzare.",
-        "auth.displayName": "Nome visualizzato",
-        "auth.username": "Nome utente",
-        "auth.confirmPassword": "Conferma password",
-        "auth.register.button": "Registrati",
-        "auth.haveAccount": "Hai già un account? Accedi",
-        "auth.logout": "Esci dall'account",
+  it: {
 
-        "common.or": "oppure",
-        "common.seeAll": "Vedi tutto",
-        "common.add": "Aggiungi",
-        "common.edit": "Modifica",
-        "common.loading": "Caricamento...",
+    "auth.tagline": "Organizza tutto insieme.",
+    "auth.login.title": "Bentornato",
+    "auth.login.subtitle": "Accedi al tuo account SYNC.",
+    "auth.email": "Email",
+    "auth.password": "Password",
+    "auth.login.button": "Accedi",
+    "auth.forgot": "Hai dimenticato la password?",
+    "auth.register": "Crea un account",
+    "auth.register.title": "Crea il tuo account",
+    "auth.register.subtitle": "Entra in SYNC e inizia a organizzare.",
+    "auth.displayName": "Nome visualizzato",
+    "auth.username": "Nome utente",
+    "auth.confirmPassword": "Conferma password",
+    "auth.register.button": "Registrati",
+    "auth.haveAccount": "Hai già un account? Accedi",
+    "auth.logout": "Esci dall'account",
 
-        "nav.home": "Home",
-        "nav.friends": "Amici",
-        "nav.calendar": "Calendario",
-        "nav.profile": "Profilo",
+    "common.or": "oppure",
+    "common.seeAll": "Vedi tutto",
+    "common.add": "Aggiungi",
+    "common.edit": "Modifica",
+    "common.loading": "Caricamento...",
 
-        "home.title": "Cosa facciamo?",
-        "home.today": "Oggi",
-        "home.pending": "Da decidere",
-        "home.availability": "Disponibilità",
-        "home.nextFree": "Prossimo momento libero",
-        "home.manageAvailability": "Gestisci disponibilità",
-        "home.smart.label": "SYNC ha trovato",
-        "home.smart.title": "Un momento libero",
-        "home.smart.button": "Organizza qualcosa",
+    "home.title": "Cosa facciamo?",
+    "home.smart.label": "SYNC ha trovato",
+    "home.smart.title": "Un momento libero",
+    "home.smart.button": "Organizza qualcosa",
+    "home.today": "Oggi",
+    "home.pending": "Da decidere",
+    "home.availability": "Disponibilità",
+    "home.nextFree": "Prossimo momento libero",
+    "home.manageAvailability": "Gestisci disponibilità",
 
-        "quick.event": "Organizza",
-        "quick.update": "Aggiornamento",
-        "quick.friends": "Amici",
-        "quick.calendar": "Calendario",
+    "quick.event": "Organizza",
+    "quick.update": "Aggiornamento",
+    "quick.friends": "Amici",
+    "quick.calendar": "Calendario",
 
-        "friends.title": "Amici",
-        "friends.subtitle": "Organizza qualcosa con le persone che conosci.",
-        "friends.all": "Tutti",
-        "friends.private": "Privata",
-        "friends.privacy.title": "Decidi chi vede cosa",
-        "friends.privacy.description": "Quando pubblichi qualcosa puoi scegliere tutti gli amici, la tua privata oppure singole persone.",
+    "friends.title": "Amici",
+    "friends.subtitle": "Organizza qualcosa con le persone che conosci.",
+    "friends.all": "Tutti",
+    "friends.private": "🔒 Privati",
+    "friends.privacy.title": "Decidi chi vede cosa",
+    "friends.privacy.description":
+      "Quando pubblichi qualcosa puoi scegliere tutti gli amici, i Privati oppure singole persone.",
 
-        "family.title": "Famiglia",
-        "family.subtitle": "Tutti gli impegni e i programmi della famiglia.",
-        "family.nextFree": "Prossimo momento libero per tutti",
-        "family.everyoneFree": "Tutti disponibili",
-        "family.organize": "Organizza",
-        "family.members": "Membri",
-        "family.commitments": "Impegni",
+    "family.title": "Famiglia",
+    "family.subtitle": "Tutti gli impegni e i programmi della famiglia.",
+    "family.nextFree": "Prossimo momento libero per tutti",
+    "family.everyoneFree": "Tutti disponibili",
+    "family.organize": "Organizza",
+    "family.members": "Membri",
+    "family.commitments": "Impegni",
 
-        "calendar.title": "Calendario",
-        "calendar.add": "+ Impegno",
-        "calendar.visibility": "Visibilità disponibilità",
-        "calendar.free": "Libero",
-        "calendar.partial": "Parzialmente disponibile",
-        "calendar.busy": "Occupato",
+    "calendar.title": "Calendario",
+    "calendar.add": "+ Impegno",
+    "calendar.visibility": "Visibilità disponibilità",
+    "calendar.free": "Libero",
+    "calendar.partial": "Parzialmente disponibile",
+    "calendar.busy": "Occupato",
 
-        "events.title": "I tuoi programmi",
-        "events.new": "+ Organizza",
-        "events.upcoming": "In programma",
-        "events.past": "Passati",
+    "events.title": "I tuoi programmi",
+    "events.new": "+ Organizza",
+    "events.upcoming": "In programma",
+    "events.past": "Passati",
 
-        "notifications.title": "Notifiche",
-        "notifications.markRead": "Segna come lette",
+    "notifications.title": "Notifiche",
+    "notifications.markRead": "Segna come lette",
 
-        "profile.edit": "Modifica profilo",
-        "profile.friends": "Amici",
-        "profile.private": "Privata",
-        "profile.events": "Eventi",
-        "profile.manageFriends": "Gestisci amici",
-        "profile.privateList": "Lista privata",
-        "profile.privacy": "Privacy e sicurezza",
-        "profile.settings": "Impostazioni",
+    "profile.edit": "Modifica profilo",
+    "profile.friends": "Amici",
+    "profile.private": "Privati",
+    "profile.events": "Eventi",
+    "profile.manageFriends": "Gestisci amici",
+    "profile.privateList": "Lista privata",
+    "profile.privacy": "Privacy e sicurezza",
+    "profile.settings": "Impostazioni",
 
-        "settings.title": "Impostazioni",
-        "settings.privacy": "Privacy",
-        "settings.account": "Account",
-        "settings.app": "App",
-        "settings.availabilityVisibility": "Visibilità disponibilità",
-        "settings.availabilityDescription": "Decidi chi può vedere quando sei libero.",
-        "settings.privateList": "Lista privata",
-        "settings.privateDescription": "Gestisci le persone della tua privata.",
-        "settings.blocked": "Utenti bloccati",
-        "settings.blockedDescription": "Gestisci gli utenti che hai bloccato.",
-        "settings.password": "Password",
-        "settings.passwordDescription": "Modifica la password del tuo account.",
-        "settings.deleteAccount": "Elimina account",
-        "settings.deleteDescription": "Elimina definitivamente il tuo account.",
-        "settings.language": "Lingua",
-        "settings.theme": "Aspetto",
-        "settings.notifications": "Notifiche",
-        "settings.notificationsDescription": "Gestisci le notifiche di SYNC.",
+    "settings.title": "Impostazioni",
+    "settings.privacy": "Privacy",
+    "settings.availabilityVisibility": "Visibilità disponibilità",
+    "settings.availabilityDescription":
+      "Decidi chi può vedere quando sei libero.",
+    "settings.privateList": "Lista privata",
+    "settings.privateDescription":
+      "Gestisci le persone dei tuoi Privati.",
+    "settings.blocked": "Utenti bloccati",
+    "settings.blockedDescription":
+      "Gestisci gli utenti che hai bloccato.",
+    "settings.account": "Account",
+    "settings.password": "Password",
+    "settings.passwordDescription":
+      "Modifica la password del tuo account.",
+    "settings.deleteAccount": "Elimina account",
+    "settings.deleteDescription":
+      "Elimina definitivamente il tuo account.",
+    "settings.app": "App",
+    "settings.language": "Lingua",
+    "settings.theme": "Aspetto",
+    "settings.notifications": "Notifiche",
+    "settings.notificationsDescription":
+      "Gestisci le notifiche di SYNC.",
 
-        "search.placeholder": "Cerca persone..."
-    },
+    "nav.home": "Home",
+    "nav.friends": "Amici",
+    "nav.calendar": "Calendario",
+    "nav.profile": "Profilo",
 
-    en: {
-        "auth.tagline": "Organize everything together.",
-        "auth.login.title": "Welcome back",
-        "auth.login.subtitle": "Log in to your SYNC account.",
-        "auth.email": "Email",
-        "auth.password": "Password",
-        "auth.login.button": "Log in",
-        "auth.forgot": "Forgot your password?",
-        "auth.register": "Create an account",
-        "auth.register.title": "Create your account",
-        "auth.register.subtitle": "Join SYNC and start organizing.",
-        "auth.displayName": "Display name",
-        "auth.username": "Username",
-        "auth.confirmPassword": "Confirm password",
-        "auth.register.button": "Sign up",
-        "auth.haveAccount": "Already have an account? Log in",
-        "auth.logout": "Log out",
+    "search.placeholder": "Cerca persone..."
+  },
 
-        "common.or": "or",
-        "common.seeAll": "See all",
-        "common.add": "Add",
-        "common.edit": "Edit",
-        "common.loading": "Loading...",
 
-        "nav.home": "Home",
-        "nav.friends": "Friends",
-        "nav.calendar": "Calendar",
-        "nav.profile": "Profile",
+  en: {
 
-        "home.title": "What should we do?",
-        "home.today": "Today",
-        "home.pending": "To decide",
-        "home.availability": "Availability",
-        "home.nextFree": "Next free time",
-        "home.manageAvailability": "Manage availability",
-        "home.smart.label": "SYNC found",
-        "home.smart.title": "A free moment",
-        "home.smart.button": "Organize something",
+    "auth.tagline": "Organize everything together.",
+    "auth.login.title": "Welcome back",
+    "auth.login.subtitle": "Sign in to your SYNC account.",
+    "auth.email": "Email",
+    "auth.password": "Password",
+    "auth.login.button": "Sign in",
+    "auth.forgot": "Forgot your password?",
+    "auth.register": "Create an account",
+    "auth.register.title": "Create your account",
+    "auth.register.subtitle": "Join SYNC and start organizing.",
+    "auth.displayName": "Display name",
+    "auth.username": "Username",
+    "auth.confirmPassword": "Confirm password",
+    "auth.register.button": "Sign up",
+    "auth.haveAccount": "Already have an account? Sign in",
+    "auth.logout": "Log out",
 
-        "quick.event": "Organize",
-        "quick.update": "Update",
-        "quick.friends": "Friends",
-        "quick.calendar": "Calendar",
+    "common.or": "or",
+    "common.seeAll": "See all",
+    "common.add": "Add",
+    "common.edit": "Edit",
+    "common.loading": "Loading...",
 
-        "friends.title": "Friends",
-        "friends.subtitle": "Organize something with the people you know.",
-        "friends.all": "Everyone",
-        "friends.private": "Private",
-        "friends.privacy.title": "Choose who sees what",
-        "friends.privacy.description": "When you post something, choose all friends, your private list or individual people.",
+    "home.title": "What are we doing?",
+    "home.smart.label": "SYNC found",
+    "home.smart.title": "A free moment",
+    "home.smart.button": "Plan something",
+    "home.today": "Today",
+    "home.pending": "To decide",
+    "home.availability": "Availability",
+    "home.nextFree": "Next free moment",
+    "home.manageAvailability": "Manage availability",
 
-        "family.title": "Family",
-        "family.subtitle": "All family commitments and plans.",
-        "family.nextFree": "Next free time for everyone",
-        "family.everyoneFree": "Everyone is available",
-        "family.organize": "Organize",
-        "family.members": "Members",
-        "family.commitments": "Commitments",
+    "quick.event": "Plan",
+    "quick.update": "Update",
+    "quick.friends": "Friends",
+    "quick.calendar": "Calendar",
 
-        "calendar.title": "Calendar",
-        "calendar.add": "+ Commitment",
-        "calendar.visibility": "Availability visibility",
-        "calendar.free": "Free",
-        "calendar.partial": "Partially available",
-        "calendar.busy": "Busy",
+    "friends.title": "Friends",
+    "friends.subtitle": "Plan something with people you know.",
+    "friends.all": "Everyone",
+    "friends.private": "🔒 Close friends",
+    "friends.privacy.title": "Choose who sees what",
+    "friends.privacy.description":
+      "For every update you can choose all friends, close friends, or selected people.",
 
-        "events.title": "Your plans",
-        "events.new": "+ Organize",
-        "events.upcoming": "Upcoming",
-        "events.past": "Past",
+    "family.title": "Family",
+    "family.subtitle": "Family commitments and plans.",
+    "family.nextFree": "Next moment everyone is free",
+    "family.everyoneFree": "Everyone available",
+    "family.organize": "Plan",
+    "family.members": "Members",
+    "family.commitments": "Commitments",
 
-        "notifications.title": "Notifications",
-        "notifications.markRead": "Mark as read",
+    "calendar.title": "Calendar",
+    "calendar.add": "+ Commitment",
+    "calendar.visibility": "Availability visibility",
+    "calendar.free": "Free",
+    "calendar.partial": "Partially available",
+    "calendar.busy": "Busy",
 
-        "profile.edit": "Edit profile",
-        "profile.friends": "Friends",
-        "profile.private": "Private",
-        "profile.events": "Events",
-        "profile.manageFriends": "Manage friends",
-        "profile.privateList": "Private list",
-        "profile.privacy": "Privacy & security",
-        "profile.settings": "Settings",
+    "events.title": "Your plans",
+    "events.new": "+ Plan",
+    "events.upcoming": "Upcoming",
+    "events.past": "Past",
 
-        "settings.title": "Settings",
-        "settings.privacy": "Privacy",
-        "settings.account": "Account",
-        "settings.app": "App",
-        "settings.availabilityVisibility": "Availability visibility",
-        "settings.availabilityDescription": "Choose who can see when you're free.",
-        "settings.privateList": "Private list",
-        "settings.privateDescription": "Manage people in your private list.",
-        "settings.blocked": "Blocked users",
-        "settings.blockedDescription": "Manage blocked users.",
-        "settings.password": "Password",
-        "settings.passwordDescription": "Change your password.",
-        "settings.deleteAccount": "Delete account",
-        "settings.deleteDescription": "Permanently delete your account.",
-        "settings.language": "Language",
-        "settings.theme": "Appearance",
-        "settings.notifications": "Notifications",
-        "settings.notificationsDescription": "Manage SYNC notifications.",
+    "notifications.title": "Notifications",
+    "notifications.markRead": "Mark as read",
 
-        "search.placeholder": "Search people..."
-    },
+    "profile.edit": "Edit profile",
+    "profile.friends": "Friends",
+    "profile.private": "Close friends",
+    "profile.events": "Events",
+    "profile.manageFriends": "Manage friends",
+    "profile.privateList": "Close friends list",
+    "profile.privacy": "Privacy & security",
+    "profile.settings": "Settings",
 
-    es: {
-        "auth.tagline": "Organiza todo juntos.",
-        "auth.login.title": "Bienvenido",
-        "auth.login.subtitle": "Accede a tu cuenta SYNC.",
-        "auth.email": "Correo electrónico",
-        "auth.password": "Contraseña",
-        "auth.login.button": "Acceder",
-        "auth.forgot": "¿Has olvidado la contraseña?",
-        "auth.register": "Crear una cuenta",
-        "auth.register.title": "Crea tu cuenta",
-        "auth.register.subtitle": "Entra en SYNC y empieza a organizar.",
-        "auth.displayName": "Nombre visible",
-        "auth.username": "Nombre de usuario",
-        "auth.confirmPassword": "Confirmar contraseña",
-        "auth.register.button": "Registrarse",
-        "auth.haveAccount": "¿Ya tienes una cuenta? Accede",
-        "auth.logout": "Cerrar sesión",
+    "settings.title": "Settings",
+    "settings.privacy": "Privacy",
+    "settings.availabilityVisibility": "Availability visibility",
+    "settings.availabilityDescription":
+      "Choose who can see when you are free.",
+    "settings.privateList": "Close friends list",
+    "settings.privateDescription":
+      "Manage your close friends.",
+    "settings.blocked": "Blocked users",
+    "settings.blockedDescription":
+      "Manage blocked users.",
+    "settings.account": "Account",
+    "settings.password": "Password",
+    "settings.passwordDescription":
+      "Change your account password.",
+    "settings.deleteAccount": "Delete account",
+    "settings.deleteDescription":
+      "Permanently delete your account.",
+    "settings.app": "App",
+    "settings.language": "Language",
+    "settings.theme": "Appearance",
+    "settings.notifications": "Notifications",
+    "settings.notificationsDescription":
+      "Manage SYNC notifications.",
 
-        "common.or": "o",
-        "common.seeAll": "Ver todo",
-        "common.add": "Añadir",
-        "common.edit": "Editar",
-        "common.loading": "Cargando...",
+    "nav.home": "Home",
+    "nav.friends": "Friends",
+    "nav.calendar": "Calendar",
+    "nav.profile": "Profile",
 
-        "nav.home": "Inicio",
-        "nav.friends": "Amigos",
-        "nav.calendar": "Calendario",
-        "nav.profile": "Perfil",
+    "search.placeholder": "Search people..."
+  },
 
-        "home.title": "¿Qué hacemos?",
-        "home.today": "Hoy",
-        "home.pending": "Por decidir",
-        "home.availability": "Disponibilidad",
-        "home.nextFree": "Próximo momento libre",
-        "home.manageAvailability": "Gestionar disponibilidad",
-        "home.smart.label": "SYNC ha encontrado",
-        "home.smart.title": "Un momento libre",
-        "home.smart.button": "Organizar algo",
 
-        "quick.event": "Organizar",
-        "quick.update": "Actualización",
-        "quick.friends": "Amigos",
-        "quick.calendar": "Calendario",
+  es: {
 
-        "friends.title": "Amigos",
-        "friends.subtitle": "Organiza algo con las personas que conoces.",
-        "friends.all": "Todos",
-        "friends.private": "Privada",
-        "friends.privacy.title": "Decide quién ve qué",
-        "friends.privacy.description": "Al publicar algo puedes elegir todos los amigos, tu lista privada o personas concretas.",
+    "auth.tagline": "Organízalo todo juntos.",
+    "auth.login.title": "Bienvenido",
+    "auth.login.subtitle": "Entra en tu cuenta de SYNC.",
+    "auth.email": "Email",
+    "auth.password": "Contraseña",
+    "auth.login.button": "Entrar",
+    "auth.forgot": "¿Has olvidado tu contraseña?",
+    "auth.register": "Crear una cuenta",
+    "auth.register.title": "Crea tu cuenta",
+    "auth.register.subtitle":
+      "Únete a SYNC y empieza a organizar.",
+    "auth.displayName": "Nombre visible",
+    "auth.username": "Nombre de usuario",
+    "auth.confirmPassword": "Confirmar contraseña",
+    "auth.register.button": "Registrarse",
+    "auth.haveAccount": "¿Ya tienes cuenta? Entrar",
+    "auth.logout": "Cerrar sesión",
 
-        "family.title": "Familia",
-        "family.subtitle": "Todos los compromisos y planes familiares.",
-        "family.nextFree": "Próximo momento libre para todos",
-        "family.everyoneFree": "Todos disponibles",
-        "family.organize": "Organizar",
-        "family.members": "Miembros",
-        "family.commitments": "Compromisos",
+    "common.or": "o",
+    "common.seeAll": "Ver todo",
+    "common.add": "Añadir",
+    "common.edit": "Editar",
+    "common.loading": "Cargando...",
 
-        "calendar.title": "Calendario",
-        "calendar.add": "+ Compromiso",
-        "calendar.visibility": "Visibilidad de disponibilidad",
-        "calendar.free": "Libre",
-        "calendar.partial": "Parcialmente disponible",
-        "calendar.busy": "Ocupado",
+    "home.title": "¿Qué hacemos?",
+    "home.smart.label": "SYNC ha encontrado",
+    "home.smart.title": "Un momento libre",
+    "home.smart.button": "Organizar algo",
+    "home.today": "Hoy",
+    "home.pending": "Por decidir",
+    "home.availability": "Disponibilidad",
+    "home.nextFree": "Próximo momento libre",
+    "home.manageAvailability":
+      "Gestionar disponibilidad",
 
-        "events.title": "Tus planes",
-        "events.new": "+ Organizar",
-        "events.upcoming": "Próximos",
-        "events.past": "Pasados",
+    "quick.event": "Organizar",
+    "quick.update": "Actualización",
+    "quick.friends": "Amigos",
+    "quick.calendar": "Calendario",
 
-        "notifications.title": "Notificaciones",
-        "notifications.markRead": "Marcar como leídas",
+    "friends.title": "Amigos",
+    "friends.subtitle":
+      "Organiza algo con las personas que conoces.",
+    "friends.all": "Todos",
+    "friends.private": "🔒 Cercanos",
+    "friends.privacy.title":
+      "Decide quién ve qué",
+    "friends.privacy.description":
+      "Puedes elegir todos los amigos, cercanos o personas concretas.",
 
-        "profile.edit": "Editar perfil",
-        "profile.friends": "Amigos",
-        "profile.private": "Privada",
-        "profile.events": "Eventos",
-        "profile.manageFriends": "Gestionar amigos",
-        "profile.privateList": "Lista privada",
-        "profile.privacy": "Privacidad y seguridad",
-        "profile.settings": "Configuración",
+    "family.title": "Familia",
+    "family.subtitle":
+      "Compromisos y planes de la familia.",
+    "family.nextFree":
+      "Próximo momento libre para todos",
+    "family.everyoneFree": "Todos disponibles",
+    "family.organize": "Organizar",
+    "family.members": "Miembros",
+    "family.commitments": "Compromisos",
 
-        "settings.title": "Configuración",
-        "settings.privacy": "Privacidad",
-        "settings.account": "Cuenta",
-        "settings.app": "App",
-        "settings.availabilityVisibility": "Visibilidad de disponibilidad",
-        "settings.availabilityDescription": "Decide quién puede ver cuándo estás libre.",
-        "settings.privateList": "Lista privada",
-        "settings.privateDescription": "Gestiona las personas de tu lista privada.",
-        "settings.blocked": "Usuarios bloqueados",
-        "settings.blockedDescription": "Gestiona los usuarios bloqueados.",
-        "settings.password": "Contraseña",
-        "settings.passwordDescription": "Cambia la contraseña.",
-        "settings.deleteAccount": "Eliminar cuenta",
-        "settings.deleteDescription": "Elimina definitivamente tu cuenta.",
-        "settings.language": "Idioma",
-        "settings.theme": "Apariencia",
-        "settings.notifications": "Notificaciones",
-        "settings.notificationsDescription": "Gestiona las notificaciones de SYNC.",
+    "calendar.title": "Calendario",
+    "calendar.add": "+ Compromiso",
+    "calendar.visibility":
+      "Visibilidad de disponibilidad",
+    "calendar.free": "Libre",
+    "calendar.partial":
+      "Parcialmente disponible",
+    "calendar.busy": "Ocupado",
 
-        "search.placeholder": "Buscar personas..."
-    },
+    "events.title": "Tus planes",
+    "events.new": "+ Organizar",
+    "events.upcoming": "Próximos",
+    "events.past": "Pasados",
 
-    fr: {
-        "auth.tagline": "Organisez tout ensemble.",
-        "auth.login.title": "Bon retour",
-        "auth.login.subtitle": "Connectez-vous à votre compte SYNC.",
-        "auth.email": "E-mail",
-        "auth.password": "Mot de passe",
-        "auth.login.button": "Connexion",
-        "auth.forgot": "Mot de passe oublié ?",
-        "auth.register": "Créer un compte",
-        "auth.register.title": "Créez votre compte",
-        "auth.register.subtitle": "Rejoignez SYNC et commencez à organiser.",
-        "auth.displayName": "Nom affiché",
-        "auth.username": "Nom d'utilisateur",
-        "auth.confirmPassword": "Confirmer le mot de passe",
-        "auth.register.button": "S'inscrire",
-        "auth.haveAccount": "Vous avez déjà un compte ? Connexion",
-        "auth.logout": "Déconnexion",
+    "notifications.title": "Notificaciones",
+    "notifications.markRead":
+      "Marcar como leídas",
 
-        "common.or": "ou",
-        "common.seeAll": "Voir tout",
-        "common.add": "Ajouter",
-        "common.edit": "Modifier",
-        "common.loading": "Chargement...",
+    "profile.edit": "Editar perfil",
+    "profile.friends": "Amigos",
+    "profile.private": "Cercanos",
+    "profile.events": "Eventos",
+    "profile.manageFriends":
+      "Gestionar amigos",
+    "profile.privateList":
+      "Lista de cercanos",
+    "profile.privacy":
+      "Privacidad y seguridad",
+    "profile.settings": "Ajustes",
 
-        "nav.home": "Accueil",
-        "nav.friends": "Amis",
-        "nav.calendar": "Calendrier",
-        "nav.profile": "Profil",
+    "settings.title": "Ajustes",
+    "settings.privacy": "Privacidad",
+    "settings.availabilityVisibility":
+      "Visibilidad de disponibilidad",
+    "settings.availabilityDescription":
+      "Decide quién puede ver cuándo estás libre.",
+    "settings.privateList":
+      "Lista de cercanos",
+    "settings.privateDescription":
+      "Gestiona tus personas cercanas.",
+    "settings.blocked":
+      "Usuarios bloqueados",
+    "settings.blockedDescription":
+      "Gestiona los usuarios bloqueados.",
+    "settings.account": "Cuenta",
+    "settings.password": "Contraseña",
+    "settings.passwordDescription":
+      "Cambia la contraseña.",
+    "settings.deleteAccount":
+      "Eliminar cuenta",
+    "settings.deleteDescription":
+      "Elimina definitivamente tu cuenta.",
+    "settings.app": "App",
+    "settings.language": "Idioma",
+    "settings.theme": "Apariencia",
+    "settings.notifications":
+      "Notificaciones",
+    "settings.notificationsDescription":
+      "Gestiona las notificaciones de SYNC.",
 
-        "home.title": "On fait quoi ?",
-        "home.today": "Aujourd'hui",
-        "home.pending": "À décider",
-        "home.availability": "Disponibilité",
-        "home.nextFree": "Prochain moment libre",
-        "home.manageAvailability": "Gérer la disponibilité",
-        "home.smart.label": "SYNC a trouvé",
-        "home.smart.title": "Un moment libre",
-        "home.smart.button": "Organiser quelque chose",
+    "nav.home": "Inicio",
+    "nav.friends": "Amigos",
+    "nav.calendar": "Calendario",
+    "nav.profile": "Perfil",
 
-        "quick.event": "Organiser",
-        "quick.update": "Actualité",
-        "quick.friends": "Amis",
-        "quick.calendar": "Calendrier",
+    "search.placeholder":
+      "Buscar personas..."
+  },
 
-        "friends.title": "Amis",
-        "friends.subtitle": "Organisez quelque chose avec vos amis.",
-        "friends.all": "Tous",
-        "friends.private": "Privée",
-        "friends.privacy.title": "Choisissez qui voit quoi",
-        "friends.privacy.description": "Lors d'une publication, choisissez tous vos amis, votre liste privée ou certaines personnes.",
 
-        "family.title": "Famille",
-        "family.subtitle": "Tous les engagements et programmes familiaux.",
-        "family.nextFree": "Prochain moment libre pour tous",
-        "family.everyoneFree": "Tout le monde est disponible",
-        "family.organize": "Organiser",
-        "family.members": "Membres",
-        "family.commitments": "Engagements",
+  fr: {
 
-        "calendar.title": "Calendrier",
-        "calendar.add": "+ Engagement",
-        "calendar.visibility": "Visibilité de la disponibilité",
-        "calendar.free": "Libre",
-        "calendar.partial": "Partiellement disponible",
-        "calendar.busy": "Occupé",
+    "auth.tagline":
+      "Organisez tout ensemble.",
+    "auth.login.title":
+      "Bon retour",
+    "auth.login.subtitle":
+      "Connectez-vous à votre compte SYNC.",
+    "auth.email": "Email",
+    "auth.password": "Mot de passe",
+    "auth.login.button":
+      "Se connecter",
+    "auth.forgot":
+      "Mot de passe oublié ?",
+    "auth.register":
+      "Créer un compte",
+    "auth.register.title":
+      "Créez votre compte",
+    "auth.register.subtitle":
+      "Rejoignez SYNC et commencez à organiser.",
+    "auth.displayName":
+      "Nom affiché",
+    "auth.username":
+      "Nom d'utilisateur",
+    "auth.confirmPassword":
+      "Confirmer le mot de passe",
+    "auth.register.button":
+      "S'inscrire",
+    "auth.haveAccount":
+      "Vous avez déjà un compte ? Se connecter",
+    "auth.logout":
+      "Se déconnecter",
 
-        "events.title": "Vos programmes",
-        "events.new": "+ Organiser",
-        "events.upcoming": "À venir",
-        "events.past": "Passés",
+    "common.or": "ou",
+    "common.seeAll": "Voir tout",
+    "common.add": "Ajouter",
+    "common.edit": "Modifier",
+    "common.loading": "Chargement...",
 
-        "notifications.title": "Notifications",
-        "notifications.markRead": "Tout marquer comme lu",
+    "home.title": "On fait quoi ?",
+    "home.smart.label":
+      "SYNC a trouvé",
+    "home.smart.title":
+      "Un moment libre",
+    "home.smart.button":
+      "Organiser quelque chose",
+    "home.today": "Aujourd'hui",
+    "home.pending": "À décider",
+    "home.availability":
+      "Disponibilité",
+    "home.nextFree":
+      "Prochain moment libre",
+    "home.manageAvailability":
+      "Gérer la disponibilité",
 
-        "profile.edit": "Modifier le profil",
-        "profile.friends": "Amis",
-        "profile.private": "Privée",
-        "profile.events": "Événements",
-        "profile.manageFriends": "Gérer les amis",
-        "profile.privateList": "Liste privée",
-        "profile.privacy": "Confidentialité et sécurité",
-        "profile.settings": "Paramètres",
+    "quick.event": "Organiser",
+    "quick.update": "Actualité",
+    "quick.friends": "Amis",
+    "quick.calendar": "Calendrier",
 
-        "settings.title": "Paramètres",
-        "settings.privacy": "Confidentialité",
-        "settings.account": "Compte",
-        "settings.app": "Application",
-        "settings.availabilityVisibility": "Visibilité de la disponibilité",
-        "settings.availabilityDescription": "Choisissez qui peut voir quand vous êtes libre.",
-        "settings.privateList": "Liste privée",
-        "settings.privateDescription": "Gérez les personnes de votre liste privée.",
-        "settings.blocked": "Utilisateurs bloqués",
-        "settings.blockedDescription": "Gérez les utilisateurs bloqués.",
-        "settings.password": "Mot de passe",
-        "settings.passwordDescription": "Modifiez votre mot de passe.",
-        "settings.deleteAccount": "Supprimer le compte",
-        "settings.deleteDescription": "Supprime définitivement votre compte.",
-        "settings.language": "Langue",
-        "settings.theme": "Apparence",
-        "settings.notifications": "Notifications",
-        "settings.notificationsDescription": "Gérez les notifications de SYNC.",
+    "friends.title": "Amis",
+    "friends.subtitle":
+      "Organisez quelque chose avec vos amis.",
+    "friends.all": "Tous",
+    "friends.private": "🔒 Proches",
+    "friends.privacy.title":
+      "Choisissez qui voit quoi",
+    "friends.privacy.description":
+      "Choisissez tous vos amis, vos proches ou des personnes précises.",
 
-        "search.placeholder": "Rechercher des personnes..."
-    }
+    "family.title": "Famille",
+    "family.subtitle":
+      "Engagements et programmes de la famille.",
+    "family.nextFree":
+      "Prochain moment libre pour tous",
+    "family.everyoneFree":
+      "Tout le monde est disponible",
+    "family.organize":
+      "Organiser",
+    "family.members":
+      "Membres",
+    "family.commitments":
+      "Engagements",
+
+    "calendar.title":
+      "Calendrier",
+    "calendar.add":
+      "+ Engagement",
+    "calendar.visibility":
+      "Visibilité de disponibilité",
+    "calendar.free":
+      "Libre",
+    "calendar.partial":
+      "Partiellement disponible",
+    "calendar.busy":
+      "Occupé",
+
+    "events.title":
+      "Vos programmes",
+    "events.new":
+      "+ Organiser",
+    "events.upcoming":
+      "À venir",
+    "events.past":
+      "Passés",
+
+    "notifications.title":
+      "Notifications",
+    "notifications.markRead":
+      "Tout marquer comme lu",
+
+    "profile.edit":
+      "Modifier le profil",
+    "profile.friends":
+      "Amis",
+    "profile.private":
+      "Proches",
+    "profile.events":
+      "Événements",
+    "profile.manageFriends":
+      "Gérer les amis",
+    "profile.privateList":
+      "Liste des proches",
+    "profile.privacy":
+      "Confidentialité et sécurité",
+    "profile.settings":
+      "Paramètres",
+
+    "settings.title":
+      "Paramètres",
+    "settings.privacy":
+      "Confidentialité",
+    "settings.availabilityVisibility":
+      "Visibilité de disponibilité",
+    "settings.availabilityDescription":
+      "Choisissez qui peut voir quand vous êtes libre.",
+    "settings.privateList":
+      "Liste des proches",
+    "settings.privateDescription":
+      "Gérez vos proches.",
+    "settings.blocked":
+      "Utilisateurs bloqués",
+    "settings.blockedDescription":
+      "Gérez les utilisateurs bloqués.",
+    "settings.account":
+      "Compte",
+    "settings.password":
+      "Mot de passe",
+    "settings.passwordDescription":
+      "Modifier le mot de passe.",
+    "settings.deleteAccount":
+      "Supprimer le compte",
+    "settings.deleteDescription":
+      "Supprimez définitivement votre compte.",
+    "settings.app": "App",
+    "settings.language":
+      "Langue",
+    "settings.theme":
+      "Apparence",
+    "settings.notifications":
+      "Notifications",
+    "settings.notificationsDescription":
+      "Gérez les notifications de SYNC.",
+
+    "nav.home": "Accueil",
+    "nav.friends": "Amis",
+    "nav.calendar": "Calendrier",
+    "nav.profile": "Profil",
+
+    "search.placeholder":
+      "Rechercher des personnes..."
+  }
 };
 
 
 /* =========================================================
    HELPERS
-========================================================= */
+   ========================================================= */
 
-function saveState() {
-    localStorage.setItem(
-        "sync_user",
-        JSON.stringify(SYNC.state.currentUser)
-    );
+const $ = id =>
+  document.getElementById(id);
 
-    localStorage.setItem(
-        "sync_friends",
-        JSON.stringify(SYNC.state.friends)
-    );
+const qs = (selector, root = document) =>
+  root.querySelector(selector);
 
-    localStorage.setItem(
-        "sync_private",
-        JSON.stringify(SYNC.state.privateFriends)
-    );
+const qsa = (selector, root = document) =>
+  [...root.querySelectorAll(selector)];
 
-    localStorage.setItem(
-        "sync_events",
-        JSON.stringify(SYNC.state.events)
-    );
+const esc = value =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[char])
+  );
 
-    localStorage.setItem(
-        "sync_commitments",
-        JSON.stringify(SYNC.state.commitments)
-    );
+const uid = prefix =>
+  `${prefix}_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2, 9)}`;
 
-    localStorage.setItem(
-        "sync_notifications",
-        JSON.stringify(SYNC.state.notifications)
-    );
 
-    localStorage.setItem(
-        "sync_availability_visibility",
-        SYNC.state.availabilityVisibility
-    );
+/* =========================================================
+   DEFAULT DATA
+   ========================================================= */
+
+const defaultFriends = [
+
+  {
+    id: "f1",
+    name: "Luca",
+    username: "@luca",
+    avatar: "🧑🏻",
+    private: true,
+    availability: "free"
+  },
+
+  {
+    id: "f2",
+    name: "Marco",
+    username: "@marco",
+    avatar: "👦🏻",
+    private: true,
+    availability: "free"
+  },
+
+  {
+    id: "f3",
+    name: "Giulia",
+    username: "@giulia",
+    avatar: "👩🏻",
+    private: false,
+    availability: "partial"
+  },
+
+  {
+    id: "f4",
+    name: "Sofia",
+    username: "@sofia",
+    avatar: "👩🏼",
+    private: true,
+    availability: "free"
+  },
+
+  {
+    id: "f5",
+    name: "Matteo",
+    username: "@matteo",
+    avatar: "🧑🏼",
+    private: false,
+    availability: "busy"
+  },
+
+  {
+    id: "f6",
+    name: "Andrea",
+    username: "@andrea",
+    avatar: "👨🏻",
+    private: false,
+    availability: "free"
+  },
+
+  {
+    id: "f7",
+    name: "Chiara",
+    username: "@chiara",
+    avatar: "👩🏻‍🦰",
+    private: true,
+    availability: "free"
+  }
+];
+
+
+const defaultFamily = [
+
+  {
+    id: "m1",
+    name: "Mamma",
+    avatar: "👩🏻",
+    role: "Famiglia"
+  },
+
+  {
+    id: "m2",
+    name: "Papà",
+    avatar: "👨🏻",
+    role: "Famiglia"
+  },
+
+  {
+    id: "m3",
+    name: "Fratello",
+    avatar: "🧑🏻",
+    role: "Famiglia"
+  }
+];
+
+
+const defaultData = {
+
+  friends: defaultFriends,
+
+  family: defaultFamily,
+
+  privateIds:
+    defaultFriends
+      .filter(friend => friend.private)
+      .map(friend => friend.id),
+
+  blocked: [],
+
+  myAvailability: "free",
+
+  commitments: [
+
+    {
+      id: "c1",
+      title: "Allenamento",
+      date: "2026-09-10",
+      start: "17:00",
+      end: "18:30",
+      place: "Palestra",
+      privacy: "busy",
+      recurring: false,
+      family: false
+    },
+
+    {
+      id: "c2",
+      title: "Cena in famiglia",
+      date: "2026-09-12",
+      start: "20:00",
+      end: "22:00",
+      place: "Da decidere",
+      privacy: "details",
+      recurring: false,
+      family: true
+    }
+
+  ],
+
+  events: [
+
+    {
+      id: "e1",
+      title: "Cinema sabato",
+      date: "2026-09-12",
+      time: "20:30",
+      place: "Cinema",
+      activity: "Film",
+      budget: "15 €",
+      participants: ["f1", "f2", "f4"],
+      status: "pending",
+      votes: {
+        yes: 2,
+        maybe: 1,
+        no: 0
+      },
+      myVote: "yes",
+      audience: "private",
+      transport: "Auto",
+      tasks: [
+        "Prenotare i biglietti",
+        "Scegliere film"
+      ],
+      messages: []
+    },
+
+    {
+      id: "e2",
+      title: "Aperitivo",
+      date: "2026-09-05",
+      time: "19:30",
+      place: "Centro",
+      activity: "Aperitivo",
+      budget: "12 €",
+      participants: ["f3", "f6"],
+      status: "past",
+      votes: {
+        yes: 3,
+        maybe: 0,
+        no: 0
+      },
+      myVote: "yes",
+      audience: "friends",
+      transport: "A piedi",
+      tasks: [],
+      messages: []
+    }
+
+  ],
+
+  updates: [],
+
+  notifications: [
+
+    {
+      id: "n1",
+      icon: "🗳️",
+      title: "Nuovo voto",
+      text:
+        "Marco ha risposto al programma Cinema sabato.",
+      time: "10 min",
+      unread: true
+    },
+
+    {
+      id: "n2",
+      icon: "✨",
+      title: "Momento libero trovato",
+      text:
+        "Sabato sera 7 amici risultano disponibili.",
+      time: "1 h",
+      unread: true
+    },
+
+    {
+      id: "n3",
+      icon: "📅",
+      title: "Programma aggiornato",
+      text:
+        "L'orario dell'aperitivo è stato confermato.",
+      time: "Ieri",
+      unread: false
+    }
+
+  ],
+
+  lastSearch: []
+};
+
+
+/* =========================================================
+   STATE
+   ========================================================= */
+
+const savedSettings =
+  loadJSON(
+    KEYS.settings,
+    {}
+  );
+
+let state = {
+
+  lang:
+    savedSettings.lang || "it",
+
+  theme:
+    savedSettings.theme || "system",
+
+  page: "home",
+
+  lastPage: "home",
+
+  friendsTab: "all",
+
+  eventFilter: "upcoming",
+
+  calendarDate:
+    new Date("2026-09-12T12:00:00"),
+
+  availabilityVisibility:
+    savedSettings.availabilityVisibility ||
+    "friends",
+
+  availabilitySelected:
+    savedSettings.availabilitySelected || [],
+
+  notificationSettings:
+    savedSettings.notificationSettings || {
+      events: true,
+      votes: true,
+      reminders: true,
+      updates: false
+    },
+
+  data: null,
+
+  currentUser: null
+};
+
+
+/* =========================================================
+   STORAGE
+   ========================================================= */
+
+function loadJSON(key, fallback) {
+
+  try {
+
+    const value =
+      localStorage.getItem(key);
+
+    return value
+      ? JSON.parse(value)
+      : fallback;
+
+  } catch {
+
+    return fallback;
+  }
 }
 
-function escapeHTML(value = "") {
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+
+function saveJSON(key, value) {
+
+  localStorage.setItem(
+    key,
+    JSON.stringify(value)
+  );
 }
 
-function t(key) {
-    return (
-        translations[SYNC.state.language]?.[key] ||
-        translations.it[key] ||
-        key
+
+function saveData() {
+
+  saveJSON(
+    KEYS.data,
+    state.data
+  );
+}
+
+
+function saveSettings() {
+
+  saveJSON(
+    KEYS.settings,
+    {
+      lang: state.lang,
+      theme: state.theme,
+      availabilityVisibility:
+        state.availabilityVisibility,
+      availabilitySelected:
+        state.availabilitySelected,
+      notificationSettings:
+        state.notificationSettings
+    }
+  );
+}
+
+
+/* =========================================================
+   INIT
+   ========================================================= */
+
+function init() {
+
+  state.data =
+    loadJSON(
+      KEYS.data,
+      structuredClone(defaultData)
     );
+
+  if (
+    !state.data ||
+    !Array.isArray(state.data.friends)
+  ) {
+
+    state.data =
+      structuredClone(defaultData);
+  }
+
+  const accounts =
+    loadJSON(
+      KEYS.accounts,
+      []
+    );
+
+  const session =
+    localStorage.getItem(
+      KEYS.session
+    );
+
+  if (session) {
+
+    state.currentUser =
+      accounts.find(
+        account =>
+          account.id === session
+      ) || null;
+  }
+
+  applyTheme();
+
+  applyLanguage();
+
+  bindEvents();
+
+  if (state.currentUser) {
+
+    enterApp();
+
+  } else {
+
+    showAuth("login");
+  }
 }
 
-function showToast(message) {
-    const container =
-        document.getElementById("toast-container");
 
-    if (!container) return;
+/* =========================================================
+   EVENT BINDINGS
+   ========================================================= */
 
-    const toast =
-        document.createElement("div");
+function bindEvents() {
 
-    toast.className = "toast";
-    toast.textContent = message;
+  document.addEventListener(
+    "click",
+    event => {
 
-    container.appendChild(toast);
+      const actionEl =
+        event.target.closest(
+          "[data-action]"
+        );
 
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
-}
+      if (actionEl) {
 
-function setLoading(show) {
-    document
-        .getElementById("loading-overlay")
-        ?.classList.toggle("hidden", !show);
-}
+        handleAction(
+          actionEl.dataset.action,
+          actionEl
+        );
+      }
 
-function getInitials(name = "") {
-    const parts =
-        name.trim().split(/\s+/);
 
-    return parts
-        .slice(0, 2)
-        .map(part =>
-            part[0]?.toUpperCase() || ""
+      const pageEl =
+        event.target.closest(
+          "[data-page-target]"
+        );
+
+      if (pageEl) {
+
+        showPage(
+          pageEl.dataset.pageTarget
+        );
+      }
+
+
+      const friendTab =
+        event.target.closest(
+          "[data-friends-tab]"
+        );
+
+      if (friendTab) {
+
+        state.friendsTab =
+          friendTab.dataset.friendsTab;
+
+        renderFriends();
+      }
+
+
+      const eventFilter =
+        event.target.closest(
+          "[data-event-filter]"
+        );
+
+      if (eventFilter) {
+
+        state.eventFilter =
+          eventFilter.dataset.eventFilter;
+
+        renderEvents();
+      }
+
+
+      const vote =
+        event.target.closest(
+          "[data-vote]"
+        );
+
+      if (vote) {
+
+        voteEvent(
+          vote.dataset.id,
+          vote.dataset.vote
+        );
+      }
+
+
+      const eventBtn =
+        event.target.closest(
+          "[data-event-action]"
+        );
+
+      if (eventBtn) {
+
+        eventAction(
+          eventBtn.dataset.eventAction,
+          eventBtn.dataset.id
+        );
+      }
+
+    }
+  );
+
+
+  $("login-form")
+    .addEventListener(
+      "submit",
+      login
+    );
+
+
+  $("register-form")
+    .addEventListener(
+      "submit",
+      register
+    );
+
+
+  $("global-search")
+    .addEventListener(
+      "input",
+      event =>
+        searchPeople(
+          event.target.value
         )
-        .join("");
+    );
+
+
+  $("global-search")
+    .addEventListener(
+      "keydown",
+      event => {
+
+        if (event.key === "Enter") {
+
+          event.preventDefault();
+
+          runWebSearch(
+            event.target.value
+          );
+        }
+      }
+    );
 }
 
 
 /* =========================================================
-   LANGUAGE
-========================================================= */
+   ACTION ROUTER
+   ========================================================= */
 
-function applyLanguage() {
+function handleAction(action, element) {
 
-    document.documentElement.lang =
-        SYNC.state.language;
+  switch (action) {
 
-    document
-        .querySelectorAll("[data-i18n]")
-        .forEach(element => {
+    case "show-register":
+      showAuth("register");
+      break;
 
-            const key =
-                element.dataset.i18n;
+    case "show-login":
+      showAuth("login");
+      break;
 
-            element.textContent =
-                t(key);
-        });
+    case "forgot-password":
+      forgotPassword();
+      break;
 
-    document
-        .querySelectorAll("[data-i18n-placeholder]")
-        .forEach(element => {
+    case "logout":
+      logout();
+      break;
 
-            const key =
-                element.dataset.i18nPlaceholder;
+    case "open-profile":
+      showPage("profile");
+      break;
 
-            element.placeholder =
-                t(key);
-        });
+    case "open-notifications":
+      showPage("notifications");
+      break;
 
-    const currentLanguage =
-        document.getElementById(
-            "current-language"
+    case "open-search":
+      showPage("search");
+
+      setTimeout(
+        () => $("global-search").focus(),
+        50
+      );
+
+      break;
+
+    case "open-friends":
+      showPage("friends");
+      break;
+
+    case "open-calendar":
+      showPage("calendar");
+      break;
+
+    case "open-settings":
+      showPage("settings");
+      break;
+
+    case "create-event":
+      openEventModal();
+      break;
+
+    case "create-from-free-time":
+      openEventModal({
+        date: "2026-09-12",
+        time: "20:00"
+      });
+      break;
+
+    case "create-family-event":
+      openEventModal({
+        family: true,
+        date: "2026-09-12",
+        time: "20:00"
+      });
+      break;
+
+    case "create-update":
+      openUpdateModal();
+      break;
+
+    case "create-commitment":
+      openCommitmentModal();
+      break;
+
+    case "open-availability":
+      openAvailabilityModal();
+      break;
+
+    case "manage-availability-visibility":
+      openAvailabilityVisibility();
+      break;
+
+    case "open-private-list":
+      openPrivateList();
+      break;
+
+    case "open-privacy":
+      openPrivacy();
+      break;
+
+    case "open-blocked-users":
+      openBlocked();
+      break;
+
+    case "add-friend":
+      openAddFriend();
+      break;
+
+    case "add-family-member":
+      openFamilyMember();
+      break;
+
+    case "family-settings":
+      openFamilySettings();
+      break;
+
+    case "edit-profile":
+      openProfileEdit();
+      break;
+
+    case "change-password":
+      openPasswordChange();
+      break;
+
+    case "delete-account":
+      deleteAccount();
+      break;
+
+    case "change-language":
+      openLanguage();
+      break;
+
+    case "toggle-theme":
+      toggleTheme();
+      break;
+
+    case "notification-settings":
+      openNotificationSettings();
+      break;
+
+    case "mark-notifications-read":
+
+      state.data.notifications
+        .forEach(
+          notification =>
+            notification.unread = false
         );
 
-    if (currentLanguage) {
+      saveData();
 
-        const names = {
-            it: "Italiano",
-            en: "English",
-            es: "Español",
-            fr: "Français"
-        };
+      renderAll();
 
-        currentLanguage.textContent =
-            names[SYNC.state.language];
-    }
-}
+      toast(
+        "Notifiche segnate come lette."
+      );
 
-function changeLanguage() {
+      break;
 
-    openModal(`
-        <h2>🌍 ${t("settings.language")}</h2>
+    case "close-modal":
+      closeModal();
+      break;
 
-        <p class="modal-subtitle">
-            Scegli la lingua di SYNC.
-        </p>
+    case "previous-day":
+      shiftCalendar(-1);
+      break;
 
-        <div class="choice-list">
+    case "next-day":
+      shiftCalendar(1);
+      break;
 
-            ${[
-                ["it", "🇮🇹 Italiano"],
-                ["en", "🇬🇧 English"],
-                ["es", "🇪🇸 Español"],
-                ["fr", "🇫🇷 Français"]
-            ].map(([code, name]) => `
-                <label class="choice-item ${
-                    SYNC.state.language === code
-                        ? "selected"
-                        : ""
-                }">
-
-                    <input
-                        type="radio"
-                        name="language"
-                        value="${code}"
-                        ${
-                            SYNC.state.language === code
-                                ? "checked"
-                                : ""
-                        }
-                    >
-
-                    <span>${name}</span>
-
-                </label>
-            `).join("")}
-
-        </div>
-
-        <div class="modal-actions">
-
-            <button
-                class="primary-button"
-                data-modal-action="save-language"
-            >
-                Salva
-            </button>
-
-        </div>
-    `);
-}
-
-
-/* =========================================================
-   THEME
-========================================================= */
-
-function applyTheme() {
-
-    let dark = false;
-
-    if (SYNC.state.theme === "dark") {
-        dark = true;
-    }
-
-    if (
-        SYNC.state.theme === "system" &&
-        window.matchMedia(
-            "(prefers-color-scheme: dark)"
-        ).matches
-    ) {
-        dark = true;
-    }
-
-    document.body.classList.toggle(
-        "dark",
-        dark
-    );
-
-    const currentTheme =
-        document.getElementById(
-            "current-theme"
-        );
-
-    if (currentTheme) {
-
-        const names = {
-            system: "Sistema",
-            light: "Chiaro",
-            dark: "Scuro"
-        };
-
-        currentTheme.textContent =
-            names[SYNC.state.theme];
-    }
-}
-
-function toggleTheme() {
-
-    const order = [
-        "system",
-        "light",
-        "dark"
-    ];
-
-    const index =
-        order.indexOf(
-            SYNC.state.theme
-        );
-
-    SYNC.state.theme =
-        order[(index + 1) % order.length];
-
-    localStorage.setItem(
-        "sync_theme",
-        SYNC.state.theme
-    );
-
-    applyTheme();
-
-    showToast(
-        `Aspetto: ${
-            SYNC.state.theme === "system"
-                ? "Sistema"
-                : SYNC.state.theme === "light"
-                    ? "Chiaro"
-                    : "Scuro"
-        }`
-    );
+    case "go-back":
+      showPage(
+        state.lastPage || "home"
+      );
+      break;
+  }
 }
 
 
 /* =========================================================
    AUTH
-========================================================= */
+   ========================================================= */
 
-function showAuthView(view) {
+function showAuth(view) {
 
-    document
-        .getElementById("login-view")
-        ?.classList.toggle(
-            "hidden",
-            view !== "login"
-        );
+  $("auth-screen")
+    .classList
+    .remove("hidden");
 
-    document
-        .getElementById("register-view")
-        ?.classList.toggle(
-            "hidden",
-            view !== "register"
-        );
-}
+  $("main-app")
+    .classList
+    .add("hidden");
 
-function updateAuthState() {
-
-    const authScreen =
-        document.getElementById(
-            "auth-screen"
-        );
-
-    const mainApp =
-        document.getElementById(
-            "main-app"
-        );
-
-    const loggedIn =
-        Boolean(
-            SYNC.state.currentUser
-        );
-
-    authScreen?.classList.toggle(
-        "hidden",
-        loggedIn
+  $("login-view")
+    .classList
+    .toggle(
+      "hidden",
+      view !== "login"
     );
 
-    mainApp?.classList.toggle(
-        "hidden",
-        !loggedIn
+  $("register-view")
+    .classList
+    .toggle(
+      "hidden",
+      view !== "register"
     );
-
-    if (loggedIn) {
-
-        updateProfileUI();
-        updateHeader();
-        renderAll();
-    }
 }
 
-function register(event) {
-
-    event.preventDefault();
-
-    const data =
-        new FormData(
-            event.currentTarget
-        );
-
-    const displayName =
-        String(
-            data.get("displayName") || ""
-        ).trim();
-
-    const username =
-        String(
-            data.get("username") || ""
-        )
-            .trim()
-            .replace(/^@/, "");
-
-    const email =
-        String(
-            data.get("email") || ""
-        )
-            .trim()
-            .toLowerCase();
-
-    const password =
-        String(
-            data.get("password") || ""
-        );
-
-    const confirm =
-        String(
-            data.get("passwordConfirm") || ""
-        );
-
-    if (
-        !displayName ||
-        !username ||
-        !email ||
-        !password
-    ) {
-        showToast(
-            "Compila tutti i campi."
-        );
-        return;
-    }
-
-    if (password.length < 8) {
-        showToast(
-            "La password deve contenere almeno 8 caratteri."
-        );
-        return;
-    }
-
-    if (password !== confirm) {
-        showToast(
-            "Le password non coincidono."
-        );
-        return;
-    }
-
-    /*
-      Demo locale.
-      L'autenticazione reale verrà collegata
-      al backend/database.
-    */
-
-    SYNC.state.currentUser = {
-        id: crypto.randomUUID(),
-        displayName,
-        username,
-        email,
-        bio: "",
-        avatar: "👤",
-        createdAt:
-            new Date().toISOString()
-    };
-
-    saveState();
-
-    showToast(
-        "Account creato!"
-    );
-
-    updateAuthState();
-}
 
 function login(event) {
 
-    event.preventDefault();
+  event.preventDefault();
 
-    const data =
-        new FormData(
-            event.currentTarget
-        );
+  const email =
+    $("login-email")
+      .value
+      .trim()
+      .toLowerCase();
 
-    const email =
-        String(
-            data.get("email") || ""
-        )
-            .trim()
-            .toLowerCase();
+  const password =
+    $("login-password").value;
 
-    if (!email) {
-        showToast(
-            "Inserisci la tua email."
-        );
-        return;
-    }
-
-    if (!SYNC.state.currentUser) {
-
-        SYNC.state.currentUser = {
-            id: crypto.randomUUID(),
-            displayName: "Nuovo utente",
-            username: "syncuser",
-            email,
-            bio: "",
-            avatar: "👤"
-        };
-
-        saveState();
-    }
-
-    updateAuthState();
-
-    showToast(
-        "Accesso effettuato."
+  const accounts =
+    loadJSON(
+      KEYS.accounts,
+      []
     );
+
+  const account =
+    accounts.find(
+      item =>
+        item.email === email &&
+        item.password === password
+    );
+
+  if (!account) {
+
+    toast(
+      "Email o password non corretti."
+    );
+
+    return;
+  }
+
+  state.currentUser = account;
+
+  localStorage.setItem(
+    KEYS.session,
+    account.id
+  );
+
+  enterApp();
+
+  toast(
+    `Bentornato, ${account.displayName}!`
+  );
 }
 
-function logout() {
 
-    SYNC.state.currentUser = null;
+function register(event) {
 
-    saveState();
+  event.preventDefault();
 
-    updateAuthState();
+  const name =
+    $("register-name")
+      .value
+      .trim();
 
-    showAuthView("login");
+  const username =
+    $("register-username")
+      .value
+      .trim()
+      .replace(/^@/, "");
 
-    showToast(
-        "Sei uscito da SYNC."
+  const email =
+    $("register-email")
+      .value
+      .trim()
+      .toLowerCase();
+
+  const password =
+    $("register-password").value;
+
+  const confirm =
+    $("register-password-confirm")
+      .value;
+
+  if (
+    name.length < 2 ||
+    username.length < 2 ||
+    !email.includes("@") ||
+    password.length < 6
+  ) {
+
+    toast(
+      "Controlla i dati inseriti. La password deve avere almeno 6 caratteri."
     );
+
+    return;
+  }
+
+  if (password !== confirm) {
+
+    toast(
+      "Le password non coincidono."
+    );
+
+    return;
+  }
+
+  const accounts =
+    loadJSON(
+      KEYS.accounts,
+      []
+    );
+
+  if (
+    accounts.some(
+      account =>
+        account.email === email ||
+        account.username.toLowerCase() ===
+        ("@" + username).toLowerCase()
+    )
+  ) {
+
+    toast(
+      "Email o nome utente già utilizzati."
+    );
+
+    return;
+  }
+
+  const account = {
+
+    id: uid("user"),
+
+    displayName: name,
+
+    username:
+      "@" + username,
+
+    email,
+
+    password,
+
+    bio:
+      "Sto usando SYNC ✨",
+
+    avatar:
+      "👤"
+  };
+
+  accounts.push(account);
+
+  saveJSON(
+    KEYS.accounts,
+    accounts
+  );
+
+  state.currentUser = account;
+
+  localStorage.setItem(
+    KEYS.session,
+    account.id
+  );
+
+  enterApp();
+
+  toast(
+    "Account creato. Benvenuto in SYNC!"
+  );
 }
+
 
 function forgotPassword() {
 
-    openModal(`
-        <h2>🔑 Password dimenticata</h2>
+  const email =
+    prompt(
+      "Inserisci la tua email per il recupero (demo):"
+    );
 
-        <p class="modal-subtitle">
-            Inserisci la tua email e ti invieremo le istruzioni
-            per recuperare l'accesso.
-        </p>
+  if (!email) return;
 
-        <form
-            class="modal-form"
-            id="forgot-form"
-        >
+  const accounts =
+    loadJSON(
+      KEYS.accounts,
+      []
+    );
 
-            <label>Email</label>
+  if (
+    accounts.some(
+      account =>
+        account.email ===
+        email.trim().toLowerCase()
+    )
+  ) {
 
-            <input
-                type="email"
-                name="email"
-                required
-            >
+    toast(
+      "Demo: richiesta di recupero registrata."
+    );
 
-            <div class="modal-actions">
+  } else {
 
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    Invia
-                </button>
+    toast(
+      "Nessun account trovato con questa email."
+    );
+  }
+}
 
-            </div>
 
-        </form>
-    `);
+function logout() {
+
+  localStorage.removeItem(
+    KEYS.session
+  );
+
+  state.currentUser = null;
+
+  showAuth("login");
+
+  $("login-form").reset();
+
+  toast(
+    "Sei uscito da SYNC."
+  );
+}
+
+
+function enterApp() {
+
+  $("auth-screen")
+    .classList
+    .add("hidden");
+
+  $("main-app")
+    .classList
+    .remove("hidden");
+
+  renderAll();
+
+  showPage("home");
 }
 
 
 /* =========================================================
    NAVIGATION
-========================================================= */
+   ========================================================= */
 
-function navigate(page) {
+function showPage(page) {
 
-    const validPages = [
-        "home",
-        "friends",
-        "family",
-        "calendar",
-        "events",
-        "notifications",
-        "profile",
-        "settings",
-        "search"
-    ];
+  if (page === "search") {
 
-    if (!validPages.includes(page)) {
-        page = "home";
-    }
+    state.lastPage =
+      state.page;
+  }
 
-    SYNC.state.currentPage =
-        page;
+  state.page = page;
 
-    document
-        .querySelectorAll(".page")
-        .forEach(element => {
+  qsa(".page")
+    .forEach(
+      pageElement => {
 
-            element.classList.toggle(
-                "active",
-                element.dataset.page === page
-            );
-        });
+        pageElement.classList.toggle(
+          "active",
+          pageElement.dataset.page ===
+          page
+        );
+      }
+    );
 
-    document
-        .querySelectorAll("[data-page-target]")
-        .forEach(button => {
 
-            button.classList.toggle(
-                "active",
-                button.dataset.pageTarget === page
-            );
-        });
+  qsa(
+    ".nav-item[data-page-target]"
+  )
+    .forEach(
+      nav => {
 
-    if (page === "friends") {
-        renderFriends();
-    }
+        nav.classList.toggle(
+          "active",
+          nav.dataset.pageTarget ===
+          page
+        );
+      }
+    );
 
-    if (page === "calendar") {
-        renderCalendar();
-    }
 
-    if (page === "events") {
-        renderEvents();
-    }
+  if (page === "home")
+    renderHome();
 
-    if (page === "notifications") {
-        renderNotifications();
-    }
+  if (page === "friends")
+    renderFriends();
 
-    if (page === "profile") {
-        updateProfileUI();
-    }
+  if (page === "family")
+    renderFamily();
+
+  if (page === "calendar")
+    renderCalendar();
+
+  if (page === "events")
+    renderEvents();
+
+  if (page === "notifications")
+    renderNotifications();
+
+  if (page === "profile")
+    renderProfile();
+
+  if (page === "settings")
+    renderSettings();
+
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+
+function renderAll() {
+
+  applyLanguage();
+
+  renderHome();
+
+  renderFriends();
+
+  renderFamily();
+
+  renderCalendar();
+
+  renderEvents();
+
+  renderNotifications();
+
+  renderProfile();
+
+  renderSettings();
+
+  updateBadge();
 }
 
 
 /* =========================================================
-   PROFILE
-========================================================= */
+   LANGUAGE
+   ========================================================= */
 
-function updateHeader() {
+function applyLanguage() {
 
-    const avatar =
-        document.getElementById(
-            "header-avatar"
-        );
+  document.documentElement.lang =
+    state.lang;
 
-    if (!avatar) return;
+  qsa("[data-i18n]")
+    .forEach(element => {
 
-    avatar.textContent =
-        SYNC.state.currentUser?.avatar ||
-        "👤";
+      const value =
+        I18N[
+          state.lang
+        ]?.[
+          element.dataset.i18n
+        ];
+
+      if (value) {
+
+        element.textContent =
+          value;
+      }
+    });
+
+
+  qsa("[data-i18n-placeholder]")
+    .forEach(element => {
+
+      const value =
+        I18N[
+          state.lang
+        ]?.[
+          element.dataset.i18nPlaceholder
+        ];
+
+      if (value) {
+
+        element.placeholder =
+          value;
+      }
+    });
+
+
+  const names = {
+
+    it: "Italiano",
+
+    en: "English",
+
+    es: "Español",
+
+    fr: "Français"
+  };
+
+
+  if ($("current-language")) {
+
+    $("current-language")
+      .textContent =
+      names[state.lang];
+  }
+
+
+  if ($("current-theme")) {
+
+    $("current-theme")
+      .textContent =
+      state.theme === "system"
+        ? "Sistema"
+        : state.theme === "dark"
+          ? "Scuro"
+          : "Chiaro";
+  }
 }
 
-function updateProfileUI() {
 
-    const user =
-        SYNC.state.currentUser;
+/* =========================================================
+   THEME
+   ========================================================= */
 
-    if (!user) return;
+function applyTheme() {
 
-    const name =
-        document.getElementById(
-            "profile-display-name"
-        );
+  const dark =
+    state.theme === "dark" ||
+    (
+      state.theme === "system" &&
+      window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches
+    );
 
-    const username =
-        document.getElementById(
-            "profile-username"
-        );
-
-    const bio =
-        document.getElementById(
-            "profile-bio"
-        );
-
-    const avatar =
-        document.getElementById(
-            "profile-avatar"
-        );
-
-    if (name) {
-        name.textContent =
-            user.displayName;
-    }
-
-    if (username) {
-        username.textContent =
-            `@${user.username}`;
-    }
-
-    if (bio) {
-        bio.textContent =
-            user.bio ||
-            "Aggiungi una bio al tuo profilo.";
-    }
-
-    if (avatar) {
-        avatar.textContent =
-            user.avatar ||
-            getInitials(
-                user.displayName
-            );
-    }
-
-    const friendsCount =
-        document.getElementById(
-            "profile-friends-count"
-        );
-
-    const privateCount =
-        document.getElementById(
-            "profile-private-count"
-        );
-
-    const eventsCount =
-        document.getElementById(
-            "profile-events-count"
-        );
-
-    if (friendsCount) {
-        friendsCount.textContent =
-            SYNC.state.friends.length;
-    }
-
-    if (privateCount) {
-        privateCount.textContent =
-            SYNC.state.privateFriends.length;
-    }
-
-    if (eventsCount) {
-        eventsCount.textContent =
-            SYNC.state.events.length;
-    }
+  document.body
+    .classList
+    .toggle(
+      "dark",
+      dark
+    );
 }
 
-function editProfile() {
 
-    const user =
-        SYNC.state.currentUser;
+function toggleTheme() {
 
-    openModal(`
-        <h2>👤 Modifica profilo</h2>
+  state.theme =
+    state.theme === "light"
+      ? "dark"
+      : state.theme === "dark"
+        ? "system"
+        : "light";
 
-        <p class="modal-subtitle">
-            Personalizza ciò che vedono gli altri.
-        </p>
+  saveSettings();
 
-        <form
-            class="modal-form"
-            id="profile-form"
+  applyTheme();
+
+  applyLanguage();
+
+  toast(
+    "Aspetto: " +
+    (
+      state.theme === "system"
+        ? "Sistema"
+        : state.theme === "dark"
+          ? "Scuro"
+          : "Chiaro"
+    )
+  );
+}
+
+
+/* =========================================================
+   HOME
+   ========================================================= */
+
+function renderHome() {
+
+  if (!state.currentUser)
+    return;
+
+  const hour =
+    new Date().getHours();
+
+  $("home-greeting")
+    .textContent =
+      hour < 12
+        ? "Buongiorno"
+        : hour < 18
+          ? "Buon pomeriggio"
+          : "Buonasera";
+
+
+  $("header-avatar")
+    .textContent =
+      state.currentUser.avatar ||
+      "👤";
+
+
+  const freeCount =
+    state.data.friends
+      .filter(
+        friend =>
+          friend.availability ===
+          "free"
+      )
+      .length + 1;
+
+
+  $("best-free-time")
+    .textContent =
+      `Sabato sera siete liberi in ${freeCount}.`;
+
+
+  if ($("home-next-day"))
+    $("home-next-day")
+      .textContent =
+      "Sabato";
+
+  if ($("home-next-time"))
+    $("home-next-time")
+      .textContent =
+      "20:00 – 23:00";
+
+
+  const today =
+    state.data.commitments
+      .filter(
+        commitment =>
+          commitment.date ===
+          "2026-09-10"
+      );
+
+
+  $("today-items")
+    .innerHTML =
+      today.length
+        ? today
+            .map(
+              commitment =>
+                `
+                <div class="timeline-item">
+
+                  <div class="timeline-time">
+                    ${esc(commitment.start)}
+                  </div>
+
+                  <div class="timeline-content">
+
+                    <strong>
+                      ${esc(commitment.title)}
+                    </strong>
+
+                    <span>
+                      ${esc(commitment.place || "")}
+                    </span>
+
+                  </div>
+
+                </div>
+                `
+            )
+            .join("")
+        :
+          `
+          <div class="empty-state">
+            Nessun impegno oggi. Sei libero! 🟢
+          </div>
+          `;
+
+
+  const pending =
+    state.data.events
+      .filter(
+        event =>
+          event.status ===
+          "pending"
+      );
+
+
+  $("pending-events")
+    .innerHTML =
+      pending.length
+        ? pending
+            .map(eventHTML)
+            .join("")
+        :
+          `
+          <div class="empty-state">
+            Niente da decidere per ora ✨
+          </div>
+          `;
+}
+
+
+/* =========================================================
+   EVENT CARD
+   ========================================================= */
+
+function eventHTML(event) {
+
+  const statusClass =
+    event.status === "confirmed"
+      ? "green"
+      : event.status === "past"
+        ? ""
+        : "orange";
+
+
+  const statusText =
+    event.status === "past"
+      ? "Passato"
+      : event.status === "confirmed"
+        ? "Confermato"
+        : "Da decidere";
+
+
+  return `
+
+    <article class="event-card">
+
+      <div class="event-card-header">
+
+        <div>
+
+          <h3>
+            ${esc(event.title)}
+          </h3>
+
+          <span class="pill ${statusClass}">
+            ${statusText}
+          </span>
+
+        </div>
+
+        <span>
+          ${esc(event.activity || "🎯")}
+        </span>
+
+      </div>
+
+
+      <div class="event-card-meta">
+
+        <span>
+          📅 ${esc(event.date)}
+          ·
+          ${esc(event.time || "")}
+        </span>
+
+        <span>
+          📍 ${esc(event.place || "Da decidere")}
+        </span>
+
+        <span>
+          👥 ${event.participants.length}
+          partecipanti
+          ·
+          💶 ${esc(event.budget || "Da decidere")}
+        </span>
+
+      </div>
+
+
+      ${
+        event.status !== "past"
+          ? `
+
+          <div class="vote-row">
+
+            <button
+              class="vote-btn ${
+                event.myVote === "yes"
+                  ? "active"
+                  : ""
+              }"
+              data-vote="yes"
+              data-id="${event.id}"
+            >
+              🟢 Ci sono
+            </button>
+
+            <button
+              class="vote-btn ${
+                event.myVote === "maybe"
+                  ? "active"
+                  : ""
+              }"
+              data-vote="maybe"
+              data-id="${event.id}"
+            >
+              🟡 Forse
+            </button>
+
+            <button
+              class="vote-btn ${
+                event.myVote === "no"
+                  ? "active"
+                  : ""
+              }"
+              data-vote="no"
+              data-id="${event.id}"
+            >
+              🔴 No
+            </button>
+
+          </div>
+
+          `
+          : ""
+      }
+
+
+      <div class="event-actions">
+
+        <button
+          class="secondary-button compact"
+          data-event-action="details"
+          data-id="${event.id}"
         >
+          Apri programma
+        </button>
 
-            <label>Nome visualizzato</label>
+        <button
+          class="secondary-button compact"
+          data-event-action="archive"
+          data-id="${event.id}"
+        >
+          ⋯
+        </button>
 
-            <input
-                name="displayName"
-                maxlength="40"
-                value="${escapeHTML(
-                    user.displayName
-                )}"
-                required
-            >
+      </div>
 
-            <label>Nome utente</label>
+    </article>
 
-            <input
-                name="username"
-                maxlength="30"
-                value="@${escapeHTML(
-                    user.username
-                )}"
-                required
-            >
-
-            <label>Bio</label>
-
-            <textarea
-                name="bio"
-                maxlength="160"
-            >${escapeHTML(
-                user.bio || ""
-            )}</textarea>
-
-            <div class="modal-actions">
-
-                <button
-                    class="primary-button"
-                    type="submit"
-                >
-                    Salva
-                </button>
-
-            </div>
-
-        </form>
-    `);
+  `;
 }
 
 
 /* =========================================================
    FRIENDS
-========================================================= */
+   ========================================================= */
 
 function renderFriends() {
 
-    const container =
-        document.getElementById(
-            "friends-list"
-        );
+  qsa("[data-friends-tab]")
+    .forEach(button => {
 
-    if (!container) return;
+      const active =
+        button.dataset.friendsTab ===
+        state.friendsTab;
 
-    const list =
-        SYNC.state.friends.filter(
-            friend => {
+      button.classList.toggle(
+        "active",
+        active
+      );
 
-                if (
-                    SYNC.state.friendsTab ===
-                    "private"
-                ) {
-                    return SYNC.state
-                        .privateFriends
-                        .includes(
-                            friend.id
-                        );
-                }
+      button.setAttribute(
+        "aria-selected",
+        active
+      );
+    });
 
-                return true;
-            }
-        );
 
-    if (!list.length) {
+  const list =
+    state.friendsTab === "private"
+      ? state.data.friends.filter(
+          friend =>
+            state.data.privateIds
+              .includes(friend.id)
+        )
+      : state.data.friends;
 
-        container.innerHTML = `
-            <div class="info-card">
 
-                <span>👥</span>
+  $("friends-list")
+    .innerHTML =
+      list.length
+        ? list
+            .map(friend => {
 
-                <div>
+              const availability =
+                friend.availability ===
+                "free"
+                  ? "🟢 Libero"
+                  : friend.availability ===
+                    "partial"
+                    ? "🟡 Parzialmente disponibile"
+                    : "🔴 Occupato";
+
+
+              return `
+
+                <div class="person-card">
+
+                  <div class="person-avatar">
+                    ${friend.avatar}
+                  </div>
+
+                  <div class="person-info">
 
                     <strong>
-                        ${
-                            SYNC.state.friendsTab ===
-                            "private"
-                                ? "La tua privata è vuota"
-                                : "Non hai ancora amici"
-                        }
+                      ${esc(friend.name)}
                     </strong>
 
-                    <p>
-                        Aggiungi persone per iniziare a organizzare.
-                    </p>
+                    <span>
+                      ${esc(friend.username)}
+                      ·
+                      ${availability}
+                    </span>
+
+                  </div>
+
+                  <div class="person-actions">
+
+                    <button
+                      class="secondary-button compact"
+                      data-event-action="toggle-private"
+                      data-id="${friend.id}"
+                    >
+                      ${
+                        state.data.privateIds
+                          .includes(friend.id)
+                          ? "🔒"
+                          : "＋"
+                      }
+                    </button>
+
+                  </div>
 
                 </div>
 
+              `;
+            })
+            .join("")
+        :
+          `
+          <div class="empty-state">
+            Nessuna persona qui.
+          </div>
+          `;
+}
+
+
+/* =========================================================
+   FAMILY
+   ========================================================= */
+
+function renderFamily() {
+
+  if (!$("family-members"))
+    return;
+
+
+  $("family-members")
+    .innerHTML =
+      state.data.family
+        .map(
+          member =>
+            `
+            <div class="person-card">
+
+              <div class="person-avatar">
+                ${member.avatar}
+              </div>
+
+              <div class="person-info">
+
+                <strong>
+                  ${esc(member.name)}
+                </strong>
+
+                <span>
+                  ${esc(member.role)}
+                </span>
+
+              </div>
+
+              <span class="pill green">
+                🟢
+              </span>
+
             </div>
-        `;
+            `
+        )
+        .join("");
 
-        return;
-    }
 
-    container.innerHTML =
-        list.map(friend => {
+  const commitments =
+    state.data.commitments
+      .filter(
+        commitment =>
+          commitment.family
+      );
 
-            const isPrivate =
-                SYNC.state
-                    .privateFriends
-                    .includes(
-                        friend.id
-                    );
 
-            return `
-                <article class="person-card">
-
-                    <div class="person-avatar">
-                        ${escapeHTML(
-                            friend.avatar ||
-                            "👤"
-                        )}
-                    </div>
-
-                    <div class="person-info">
-
-                        <strong>
-                            ${escapeHTML(
-                                friend.displayName
-                            )}
-                        </strong>
-
-                        <span>
-                            @${escapeHTML(
-                                friend.username
-                            )}
-                            ${
-                                isPrivate
-                                    ? " · 🔒 Privata"
-                                    : ""
-                            }
-                        </span>
-
-                    </div>
-
-                    <div class="person-actions">
-
-                        <button
-                            class="icon-button"
-                            data-friend-action="toggle-private"
-                            data-friend-id="${escapeHTML(
-                                friend.id
-                            )}"
-                            aria-label="Privata"
-                        >
-                            ${
-                                isPrivate
-                                    ? "🔒"
-                                    : "♡"
-                            }
-                        </button>
-
-                    </div>
-
-                </article>
-            `;
-
-        }).join("");
-}
-
-function togglePrivateFriend(id) {
-
-    const index =
-        SYNC.state
-            .privateFriends
-            .indexOf(id);
-
-    if (index >= 0) {
-
-        SYNC.state
-            .privateFriends
-            .splice(index, 1);
-
-        showToast(
-            "Rimosso dalla privata."
-        );
-
-    } else {
-
-        SYNC.state
-            .privateFriends
-            .push(id);
-
-        showToast(
-            "Aggiunto alla privata."
-        );
-    }
-
-    saveState();
-
-    renderFriends();
-
-    updateProfileUI();
-}
-
-function addFriend() {
-
-    openModal(`
-        <h2>👥 Aggiungi amico</h2>
-
-        <p class="modal-subtitle">
-            Cerca una persona oppure condividi il tuo invito.
-        </p>
-
-        <div class="modal-actions">
-
-            <button
-                class="primary-button"
-                data-modal-action="search-friend"
-            >
-                🔎 Cerca
-            </button>
-
-            <button
-                class="secondary-button"
-                data-modal-action="invite-friend"
-            >
-                🔗 Invita
-            </button>
-
-        </div>
-    `);
-}
-
-function inviteFriend() {
-
-    const user =
-        SYNC.state.currentUser;
-
-    const link =
-        `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(
-            user.username
-        )}`;
-
-    openModal(`
-        <h2>🔗 Invita un amico</h2>
-
-        <p class="modal-subtitle">
-            Condividi questo invito.
-        </p>
-
-        <input
-            id="invite-link"
-            readonly
-            value="${escapeHTML(link)}"
-        >
-
-        <div class="modal-actions">
-
-            <button
-                class="primary-button"
-                data-modal-action="copy-invite"
-            >
-                Copia link
-            </button>
-
-            <button
-                class="secondary-button"
-                data-modal-action="native-share"
-            >
-                Condividi
-            </button>
-
-        </div>
-    `);
-}
-
-function searchFriend() {
-
-    openModal(`
-        <h2>🔎 Cerca amici</h2>
-
-        <p class="modal-subtitle">
-            Cerca per nome o nome utente.
-        </p>
-
-        <input
-            id="friend-search-input"
-            type="search"
-            placeholder="Nome o @username..."
-            autocomplete="off"
-        >
-
-        <div
-            id="friend-search-results"
-            class="people-list"
-            style="margin-top:15px"
-        ></div>
-    `);
-
-    setTimeout(() => {
-
-        document
-            .getElementById(
-                "friend-search-input"
+  $("family-commitments")
+    .innerHTML =
+      commitments.length
+        ? commitments
+            .map(
+              eventCommitmentHTML
             )
-            ?.focus();
-
-    }, 50);
+            .join("")
+        :
+          `
+          <div class="empty-state">
+            Nessun impegno familiare.
+          </div>
+          `;
 }
 
 
-/* =========================================================
-   CREATE EVENT
-========================================================= */
+function eventCommitmentHTML(
+  commitment
+) {
 
-function createEvent() {
+  return `
 
-    const friends =
-        SYNC.state.friends;
+    <div class="event-card">
 
-    openModal(`
-        <h2>🎯 Organizza qualcosa</h2>
+      <div class="event-card-header">
 
-        <p class="modal-subtitle">
-            Crea un programma e scegli esattamente chi coinvolgere.
-        </p>
+        <h3>
+          ${esc(commitment.title)}
+        </h3>
 
-        <form
-            id="event-form"
-            class="modal-form"
-        >
+        <span class="pill">
+          ${esc(commitment.date)}
+        </span>
 
-            <label>Titolo</label>
+      </div>
 
-            <input
-                name="title"
-                placeholder="Es. Cinema sabato"
-                required
-                maxlength="80"
-            >
+      <div class="event-card-meta">
 
-            <label>Data</label>
+        <span>
+          🕒
+          ${esc(commitment.start)}
+          –
+          ${esc(commitment.end)}
+        </span>
 
-            <input
-                type="date"
-                name="date"
-                required
-            >
+        <span>
+          📍
+          ${esc(commitment.place || "")}
+        </span>
 
-            <label>Ora</label>
+      </div>
 
-            <input
-                type="time"
-                name="time"
-                required
-            >
+    </div>
 
-            <label>Luogo</label>
-
-            <input
-                name="location"
-                placeholder="Es. Cinema Moderno"
-            >
-
-            <label>Budget per persona</label>
-
-            <input
-                type="number"
-                name="budget"
-                min="0"
-                step="0.50"
-                placeholder="30"
-            >
-
-            <label>Chi vuoi invitare?</label>
-
-            <div class="choice-list">
-
-                <label class="choice-item">
-
-                    <input
-                        type="radio"
-                        name="audience"
-                        value="all"
-                        checked
-                    >
-
-                    <span>
-                        👥 Tutti gli amici
-                    </span>
-
-                </label>
-
-                <label class="choice-item">
-
-                    <input
-                        type="radio"
-                        name="audience"
-                        value="private"
-                    >
-
-                    <span>
-                        🔒 Privata
-                    </span>
-
-                </label>
-
-                <label class="choice-item">
-
-                    <input
-                        type="radio"
-                        name="audience"
-                        value="selected"
-                    >
-
-                    <span>
-                        ☑️ Seleziona persone
-                    </span>
-
-                </label>
-
-            </div>
-
-            <div
-                id="event-people-selection"
-                class="choice-list"
-            >
-
-                ${friends.map(friend => `
-                    <label class="choice-item">
-
-                        <input
-                            type="checkbox"
-                            name="selectedPeople"
-                            value="${escapeHTML(
-                                friend.id
-                            )}"
-                        >
-
-                        <span>
-                            ${escapeHTML(
-                                friend.displayName
-                            )}
-                        </span>
-
-                    </label>
-                `).join("")}
-
-            </div>
-
-            <label>Descrizione</label>
-
-            <textarea
-                name="description"
-                placeholder="Aggiungi qualche dettaglio..."
-            ></textarea>
-
-            <div class="modal-actions">
-
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    Crea programma
-                </button>
-
-            </div>
-
-        </form>
-    `);
-}
-
-function submitEvent(event) {
-
-    event.preventDefault();
-
-    const data =
-        new FormData(
-            event.currentTarget
-        );
-
-    const audience =
-        data.get("audience");
-
-    let participants = [];
-
-    if (audience === "all") {
-
-        participants =
-            SYNC.state.friends
-                .map(
-                    friend => friend.id
-                );
-
-    } else if (audience === "private") {
-
-        participants = [
-            ...SYNC.state.privateFriends
-        ];
-
-    } else {
-
-        participants =
-            data.getAll(
-                "selectedPeople"
-            );
-    }
-
-    const newEvent = {
-
-        id: crypto.randomUUID(),
-
-        title:
-            String(
-                data.get("title") || ""
-            ).trim(),
-
-        date:
-            String(
-                data.get("date") || ""
-            ),
-
-        time:
-            String(
-                data.get("time") || ""
-            ),
-
-        location:
-            String(
-                data.get("location") || ""
-            ).trim(),
-
-        budget:
-            Number(
-                data.get("budget") || 0
-            ),
-
-        description:
-            String(
-                data.get("description") || ""
-            ).trim(),
-
-        audience,
-
-        participants,
-
-        status: "pending",
-
-        createdBy:
-            SYNC.state.currentUser.id,
-
-        createdAt:
-            new Date().toISOString()
-    };
-
-    if (
-        !newEvent.title ||
-        !newEvent.date
-    ) {
-        showToast(
-            "Inserisci almeno titolo e data."
-        );
-        return;
-    }
-
-    SYNC.state.events.unshift(
-        newEvent
-    );
-
-    saveState();
-
-    closeModal();
-
-    renderEvents();
-
-    updateProfileUI();
-
-    showToast(
-        "Programma creato!"
-    );
-}
-
-
-/* =========================================================
-   EVENTS
-========================================================= */
-
-function renderEvents() {
-
-    const container =
-        document.getElementById(
-            "events-list"
-        );
-
-    if (!container) return;
-
-    const now =
-        new Date();
-
-    let events =
-        [...SYNC.state.events];
-
-    events =
-        events.filter(event => {
-
-            const eventDate =
-                new Date(
-                    `${event.date}T${
-                        event.time ||
-                        "23:59"
-                    }`
-                );
-
-            return SYNC.state.eventFilter ===
-                "upcoming"
-                ? eventDate >= now
-                : eventDate < now;
-        });
-
-    if (!events.length) {
-
-        container.innerHTML = `
-            <div class="info-card">
-
-                <span>🎯</span>
-
-                <div>
-
-                    <strong>
-                        Nessun programma
-                    </strong>
-
-                    <p>
-                        Organizza qualcosa con i tuoi amici.
-                    </p>
-
-                </div>
-
-            </div>
-        `;
-
-        return;
-    }
-
-    container.innerHTML =
-        events.map(event => {
-
-            const date =
-                new Date(
-                    `${event.date}T${
-                        event.time ||
-                        "00:00"
-                    }`
-                );
-
-            const dateText =
-                date.toLocaleDateString(
-                    SYNC.state.language,
-                    {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long"
-                    }
-                );
-
-            const participants =
-                event.participants?.length ||
-                0;
-
-            return `
-                <article class="event-card">
-
-                    <div class="event-card-header">
-
-                        <div>
-
-                            <h3>
-                                ${escapeHTML(
-                                    event.title
-                                )}
-                            </h3>
-
-                            <span class="muted">
-                                ${escapeHTML(
-                                    dateText
-                                )}
-                            </span>
-
-                        </div>
-
-                        <span class="event-status ${
-                            event.status ===
-                            "confirmed"
-                                ? "confirmed"
-                                : "pending"
-                        }">
-
-                            ${
-                                event.status ===
-                                "confirmed"
-                                    ? "Confermato"
-                                    : "Da decidere"
-                            }
-
-                        </span>
-
-                    </div>
-
-                    <div class="event-card-meta">
-
-                        <span>
-                            🕐 ${escapeHTML(
-                                event.time ||
-                                "—"
-                            )}
-                        </span>
-
-                        <span>
-                            📍 ${
-                                escapeHTML(
-                                    event.location ||
-                                    "Luogo da decidere"
-                                )
-                            }
-                        </span>
-
-                        <span>
-                            👥 ${participants} invitati
-                        </span>
-
-                        ${
-                            event.budget
-                                ? `
-                                    <span>
-                                        💰 ${
-                                            event.budget
-                                        }€ a persona
-                                    </span>
-                                `
-                                : ""
-                        }
-
-                    </div>
-
-                    <div class="event-card-footer">
-
-                        <button
-                            class="secondary-button compact"
-                            data-event-action="open"
-                            data-event-id="${escapeHTML(
-                                event.id
-                            )}"
-                        >
-                            Apri
-                        </button>
-
-                        <button
-                            class="text-button"
-                            data-event-action="delete"
-                            data-event-id="${escapeHTML(
-                                event.id
-                            )}"
-                        >
-                            Elimina
-                        </button>
-
-                    </div>
-
-                </article>
-            `;
-
-        }).join("");
+  `;
 }
 
 
 /* =========================================================
    CALENDAR
-========================================================= */
+   ========================================================= */
 
 function renderCalendar() {
 
-    const grid =
-        document.getElementById(
-            "calendar-grid"
-        );
+  const date =
+    state.calendarDate;
 
-    if (!grid) return;
 
-    const hours = [];
+  const dayNames = [
+    "Domenica",
+    "Lunedì",
+    "Martedì",
+    "Mercoledì",
+    "Giovedì",
+    "Venerdì",
+    "Sabato"
+  ];
 
-    for (
-        let hour = 8;
-        hour <= 23;
-        hour++
-    ) {
-        hours.push(hour);
-    }
 
-    const today =
-        new Date();
+  const monthNames = [
+    "Gennaio",
+    "Febbraio",
+    "Marzo",
+    "Aprile",
+    "Maggio",
+    "Giugno",
+    "Luglio",
+    "Agosto",
+    "Settembre",
+    "Ottobre",
+    "Novembre",
+    "Dicembre"
+  ];
 
-    const dateString =
-        today
-            .toISOString()
-            .split("T")[0];
 
-    const dayCommitments =
-        SYNC.state.commitments.filter(
-            commitment =>
-                commitment.date ===
-                dateString
-        );
+  $("calendar-date")
+    .textContent =
+      `${dayNames[date.getDay()]}
+       ${date.getDate()}
+       ${monthNames[date.getMonth()]}`;
 
-    grid.innerHTML =
-        hours.map(hour => {
 
-            const commitment =
-                dayCommitments.find(
-                    item => {
+  $("calendar-month")
+    .textContent =
+      date.getFullYear();
 
-                        const start =
-                            Number(
-                                item.time
-                                    ?.split(":")[0]
-                            );
 
-                        const end =
-                            Number(
-                                item.endTime
-                                    ?.split(":")[0]
-                            );
+  const calendarDate =
+    date.toISOString()
+      .slice(0, 10);
 
-                        return (
-                            hour >= start &&
-                            hour < end
-                        );
-                    }
-                );
 
-            return `
-                <div class="calendar-row">
+  const slots = [
+    "08:00",
+    "10:00",
+    "12:00",
+    "14:00",
+    "16:00",
+    "18:00",
+    "20:00",
+    "22:00"
+  ];
 
-                    <div class="calendar-time">
-                        ${String(hour).padStart(
-                            2,
-                            "0"
-                        )}:00
-                    </div>
 
-                    <div class="calendar-slot">
+  $("calendar-grid")
+    .innerHTML =
+      slots
+        .map(time => {
 
-                        ${
-                            commitment
-                                ? `
-                                    <div class="calendar-event">
-                                        ${escapeHTML(
-                                            commitment.title
-                                        )}
-                                    </div>
-                                `
-                                : ""
-                        }
+          const commitment =
+            state.data.commitments
+              .find(
+                item =>
+                  item.date ===
+                    calendarDate &&
+                  item.start <= time &&
+                  item.end > time
+              );
 
-                    </div>
 
-                </div>
-            `;
+          const event =
+            state.data.events
+              .find(
+                item =>
+                  item.date ===
+                    calendarDate &&
+                  item.time === time
+              );
 
-        }).join("");
-}
 
-function createCommitment() {
+          return `
 
-    openModal(`
-        <h2>📅 Nuovo impegno</h2>
+            <div class="calendar-row">
 
-        <p class="modal-subtitle">
-            Inserisci un impegno nel tuo calendario.
-        </p>
+              <div class="calendar-time">
+                ${time}
+              </div>
 
-        <form
-            class="modal-form"
-            id="commitment-form"
-        >
+              <div class="calendar-slot">
 
-            <label>Titolo</label>
+                ${
+                  commitment
+                    ? `
+                      <div class="calendar-event orange">
 
-            <input
-                name="title"
-                placeholder="Es. Allenamento"
-                required
-            >
+                        ${esc(
+                          commitment.title
+                        )}
 
-            <label>Data</label>
+                        <br>
 
-            <input
-                name="date"
-                type="date"
-                required
-            >
+                        <small>
+                          ${esc(
+                            commitment.place || ""
+                          )}
+                        </small>
 
-            <label>Inizio</label>
+                      </div>
+                      `
+                    : event
+                      ? `
+                        <div class="calendar-event pink">
+                          ${esc(event.title)}
+                        </div>
+                        `
+                      : ""
+                }
 
-            <input
-                name="time"
-                type="time"
-                required
-            >
-
-            <label>Fine</label>
-
-            <input
-                name="endTime"
-                type="time"
-                required
-            >
-
-            <label>Disponibilità</label>
-
-            <select name="availability">
-
-                <option value="busy">
-                    🔴 Occupato
-                </option>
-
-                <option value="partial">
-                    🟡 Parzialmente disponibile
-                </option>
-
-            </select>
-
-            <label>Visibilità dettagli</label>
-
-            <select name="visibility">
-
-                <option value="busy-only">
-                    Mostra solo occupato
-                </option>
-
-                <option value="details">
-                    Mostra dettagli
-                </option>
-
-            </select>
-
-            <div class="modal-actions">
-
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    Salva impegno
-                </button>
+              </div>
 
             </div>
 
-        </form>
-    `);
+          `;
+        })
+        .join("");
+
+
+  $("availability-visibility")
+    .textContent =
+    visibilityLabel();
 }
 
-function submitCommitment(event) {
 
-    event.preventDefault();
+function shiftCalendar(delta) {
 
-    const data =
-        new FormData(
-            event.currentTarget
-        );
-
-    const commitment = {
-
-        id: crypto.randomUUID(),
-
-        title:
-            String(
-                data.get("title") || ""
-            ).trim(),
-
-        date:
-            String(
-                data.get("date") || ""
-            ),
-
-        time:
-            String(
-                data.get("time") || ""
-            ),
-
-        endTime:
-            String(
-                data.get("endTime") || ""
-            ),
-
-        availability:
-            String(
-                data.get("availability")
-            ),
-
-        visibility:
-            String(
-                data.get("visibility")
-            ),
-
-        createdBy:
-            SYNC.state.currentUser.id
-    };
-
-    SYNC.state.commitments.push(
-        commitment
+  state.calendarDate
+    .setDate(
+      state.calendarDate.getDate() +
+      delta
     );
 
-    saveState();
+  renderCalendar();
+}
 
-    closeModal();
 
-    renderCalendar();
+function visibilityLabel() {
 
-    showToast(
-        "Impegno salvato."
-    );
+  return {
+
+    none: "🚫 Nessuno",
+
+    private: "🔒 Privati",
+
+    friends: "👥 Tutti gli amici",
+
+    selected: "✓ Selezionati"
+
+  }[
+    state.availabilityVisibility
+  ] || "👥 Tutti gli amici";
 }
 
 
 /* =========================================================
-   AVAILABILITY PRIVACY
-========================================================= */
+   EVENTS
+   ========================================================= */
 
-function manageAvailabilityVisibility() {
+function renderEvents() {
 
-    const current =
-        SYNC.state
-            .availabilityVisibility;
+  qsa("[data-event-filter]")
+    .forEach(button => {
 
-    openModal(`
-        <h2>👁️ Visibilità disponibilità</h2>
+      button.classList.toggle(
+        "active",
+        button.dataset.eventFilter ===
+        state.eventFilter
+      );
+    });
 
-        <p class="modal-subtitle">
-            Decidi chi può sapere se sei libero o occupato.
-        </p>
 
-        <div class="choice-list">
+  const past =
+    state.eventFilter ===
+    "past";
 
-            <label class="choice-item">
 
-                <input
-                    type="radio"
-                    name="availabilityVisibility"
-                    value="all"
-                    ${
-                        current === "all"
-                            ? "checked"
-                            : ""
-                    }
-                >
+  const list =
+    state.data.events.filter(
+      event =>
+        (event.status === "past") ===
+        past
+    );
 
-                <span>
-                    👥 Tutti gli amici
-                </span>
 
-            </label>
+  $("events-list")
+    .innerHTML =
+      list.length
+        ? list
+            .map(eventHTML)
+            .join("")
+        :
+          `
+          <div class="empty-state">
 
-            <label class="choice-item">
+            ${
+              past
+                ? "Ancora nessun programma passato."
+                : "Non hai programmi in programma. Crea il primo! ✨"
+            }
 
-                <input
-                    type="radio"
-                    name="availabilityVisibility"
-                    value="private"
-                    ${
-                        current === "private"
-                            ? "checked"
-                            : ""
-                    }
-                >
-
-                <span>
-                    🔒 Solo privata
-                </span>
-
-            </label>
-
-            <label class="choice-item">
-
-                <input
-                    type="radio"
-                    name="availabilityVisibility"
-                    value="selected"
-                    ${
-                        current === "selected"
-                            ? "checked"
-                            : ""
-                    }
-                >
-
-                <span>
-                    ☑️ Persone selezionate
-                </span>
-
-            </label>
-
-            <label class="choice-item">
-
-                <input
-                    type="radio"
-                    name="availabilityVisibility"
-                    value="none"
-                    ${
-                        current === "none"
-                            ? "checked"
-                            : ""
-                    }
-                >
-
-                <span>
-                    🚫 Nessuno
-                </span>
-
-            </label>
-
-        </div>
-
-        <div class="modal-actions">
-
-            <button
-                class="primary-button"
-                data-modal-action="save-availability-visibility"
-            >
-                Salva
-            </button>
-
-        </div>
-    `);
+          </div>
+          `;
 }
 
 
 /* =========================================================
    NOTIFICATIONS
-========================================================= */
+   ========================================================= */
 
 function renderNotifications() {
 
-    const container =
-        document.getElementById(
-            "notifications-list"
-        );
-
-    if (!container) return;
-
-    if (
-        !SYNC.state.notifications.length
-    ) {
-
-        container.innerHTML = `
-            <div class="info-card">
-
-                <span>🔔</span>
-
-                <div>
-
-                    <strong>
-                        Nessuna notifica
-                    </strong>
-
-                    <p>
-                        Qui troverai richieste, eventi,
-                        votazioni e aggiornamenti.
-                    </p>
-
-                </div>
-
-            </div>
-        `;
-
-        updateNotificationBadge();
-
-        return;
-    }
-
-    container.innerHTML =
-        SYNC.state.notifications
+  $("notifications-list")
+    .innerHTML =
+      state.data.notifications.length
+        ? state.data.notifications
             .map(
-                notification => `
-
-                <article class="notification-item ${
-                    notification.read
-                        ? ""
-                        : "unread"
-                }">
-
-                    <div class="notification-icon">
-                        ${escapeHTML(
-                            notification.icon ||
-                            "🔔"
-                        )}
-                    </div>
-
-                    <div class="notification-content">
-
-                        <strong>
-                            ${escapeHTML(
-                                notification.title
-                            )}
-                        </strong>
-
-                        <p>
-                            ${escapeHTML(
-                                notification.message
-                            )}
-                        </p>
-
-                        <time>
-                            ${new Date(
-                                notification.createdAt
-                            ).toLocaleString(
-                                SYNC.state.language
-                            )}
-                        </time>
-
-                    </div>
-
-                </article>
-            `
-            )
-            .join("");
-
-    updateNotificationBadge();
-}
-
-function markNotificationsRead() {
-
-    SYNC.state.notifications =
-        SYNC.state.notifications.map(
-            notification => ({
-                ...notification,
-                read: true
-            })
-        );
-
-    saveState();
-
-    renderNotifications();
-
-    showToast(
-        "Notifiche segnate come lette."
-    );
-}
-
-function updateNotificationBadge() {
-
-    const badge =
-        document.getElementById(
-            "notification-badge"
-        );
-
-    if (!badge) return;
-
-    const unread =
-        SYNC.state.notifications
-            .filter(
-                item => !item.read
-            )
-            .length;
-
-    badge.textContent =
-        unread;
-
-    badge.classList.toggle(
-        "hidden",
-        unread === 0
-    );
-}
-
-
-/* =========================================================
-   UPDATES / POSTS
-========================================================= */
-
-function createUpdate() {
-
-    const friends =
-        SYNC.state.friends;
-
-    openModal(`
-        <h2>💬 Nuovo aggiornamento</h2>
-
-        <p class="modal-subtitle">
-            Scrivi qualcosa e scegli esattamente chi deve riceverlo.
-        </p>
-
-        <form
-            class="modal-form"
-            id="update-form"
-        >
-
-            <label>Messaggio</label>
-
-            <textarea
-                name="message"
-                maxlength="500"
-                placeholder="Es. Voglio andare al cinema sabato..."
-                required
-            ></textarea>
-
-            <label>Chi può vederlo?</label>
-
-            <div class="choice-list">
-
-                <label class="choice-item">
-
-                    <input
-                        type="radio"
-                        name="audience"
-                        value="all"
-                        checked
-                    >
-
-                    <span>
-                        👥 Tutti gli amici
-                    </span>
-
-                </label>
-
-                <label class="choice-item">
-
-                    <input
-                        type="radio"
-                        name="audience"
-                        value="private"
-                    >
-
-                    <span>
-                        🔒 Privata
-                    </span>
-
-                </label>
-
-                <label class="choice-item">
-
-                    <input
-                        type="radio"
-                        name="audience"
-                        value="selected"
-                    >
-
-                    <span>
-                        ☑️ Seleziona persone
-                    </span>
-
-                </label>
-
-            </div>
-
-            <div class="choice-list">
-
-                ${friends.map(friend => `
-                    <label class="choice-item">
-
-                        <input
-                            type="checkbox"
-                            name="selectedPeople"
-                            value="${escapeHTML(
-                                friend.id
-                            )}"
-                        >
-
-                        <span>
-                            ${escapeHTML(
-                                friend.displayName
-                            )}
-                        </span>
-
-                    </label>
-                `).join("")}
-
-            </div>
-
-            <div class="modal-actions">
-
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    Pubblica
-                </button>
-
-            </div>
-
-        </form>
-    `);
-}
-
-function submitUpdate(event) {
-
-    event.preventDefault();
-
-    const data =
-        new FormData(
-            event.currentTarget
-        );
-
-    const audience =
-        data.get("audience");
-
-    let recipients = [];
-
-    if (audience === "all") {
-
-        recipients =
-            SYNC.state.friends.map(
-                friend => friend.id
-            );
-
-    } else if (audience === "private") {
-
-        recipients = [
-            ...SYNC.state.privateFriends
-        ];
-
-    } else {
-
-        recipients =
-            data.getAll(
-                "selectedPeople"
-            );
-    }
-
-    closeModal();
-
-    showToast(
-        `Aggiornamento inviato a ${recipients.length} persone.`
-    );
-}
-
-
-/* =========================================================
-   SMART HOME
-========================================================= */
-
-function createFromFreeTime() {
-    createEvent();
-}
-
-
-/* =========================================================
-   WEB SEARCH — WORKER + TAVILY
-========================================================= */
-
-let searchTimer = null;
-
-async function performSearch(query) {
-
-    const container =
-        document.getElementById(
-            "search-results"
-        );
-
-    if (!container) return;
-
-    query =
-        String(query || "").trim();
-
-    if (!query) {
-
-        container.innerHTML = `
-            <div class="info-card">
-
-                <span>🔎</span>
-
-                <div>
-
-                    <strong>
-                        Cosa stai cercando?
-                    </strong>
-
-                    <p>
-                        Cerca persone, luoghi, attività,
-                        prodotti e idee.
-                    </p>
-
-                </div>
-
-            </div>
-        `;
-
-        return;
-    }
-
-    container.innerHTML = `
-        <div class="info-card">
-
-            <span>🔄</span>
-
-            <div>
-
-                <strong>
-                    ${escapeHTML(
-                        t("common.loading")
-                    )}
-                </strong>
-
-                <p>
-                    SYNC sta cercando nel web...
-                </p>
-
-            </div>
-
-        </div>
-    `;
-
-    try {
-
-        const response =
-            await fetch(
-                `${SYNC_WORKER_URL}/search`,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        query
-                    })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-            throw new Error(
-                data.error ||
-                "Errore durante la ricerca."
-            );
-        }
-
-        const results =
-            Array.isArray(data.results)
-                ? data.results
-                : [];
-
-        if (!results.length) {
-
-            container.innerHTML = `
-                <div class="info-card">
-
-                    <span>🔎</span>
-
-                    <div>
-
-                        <strong>
-                            Nessun risultato
-                        </strong>
-
-                        <p>
-                            Prova a cercare qualcos'altro.
-                        </p>
-
-                    </div>
-
-                </div>
-            `;
-
-            return;
-        }
-
-        container.innerHTML = `
-
-            <div class="search-results-header">
-
-                <strong>
-                    Risultati per
-                    "${escapeHTML(data.query)}"
-                </strong>
-
-                <span>
-                    ${results.length} risultati
-                </span>
-
-            </div>
-
-            <div class="search-results-list">
-
-                ${results.map(
-                    result => `
-
-                    <article
-                        class="search-result-card"
-                    >
-
-                        <div class="search-result-top">
-
-                            <span
-                                class="search-result-source"
-                            >
-                                ${escapeHTML(
-                                    result.source ||
-                                    "Web"
-                                )}
-                            </span>
-
-                        </div>
-
-                        <h3>
-                            ${escapeHTML(
-                                result.title ||
-                                "Risultato"
-                            )}
-                        </h3>
-
-                        <p>
-                            ${escapeHTML(
-                                result.description ||
-                                ""
-                            )}
-                        </p>
-
-                        <div
-                            class="search-result-footer"
-                        >
-
-                            <span
-                                class="search-result-match"
-                            >
-                                SYNC match
-                            </span>
-
-                            <a
-                                href="${escapeHTML(
-                                    result.url
-                                )}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="primary-button compact"
-                            >
-                                Apri
-                            </a>
-
-                        </div>
-
-                    </article>
+              notification =>
                 `
-                ).join("")}
+                <div
+                  class="
+                    notification-item
+                    ${
+                      notification.unread
+                        ? "unread"
+                        : ""
+                    }
+                  "
+                >
 
-            </div>
-        `;
+                  <div class="notification-icon">
+                    ${notification.icon}
+                  </div>
 
-    } catch (error) {
-
-        console.error(
-            "SYNC search error:",
-            error
-        );
-
-        container.innerHTML = `
-            <div class="info-card">
-
-                <span>⚠️</span>
-
-                <div>
+                  <div class="notification-content">
 
                     <strong>
-                        Ricerca non disponibile
+                      ${esc(
+                        notification.title
+                      )}
                     </strong>
 
                     <p>
-                        Controlla la connessione e riprova.
+                      ${esc(
+                        notification.text
+                      )}
                     </p>
 
-                </div>
+                    <time>
+                      ${esc(
+                        notification.time
+                      )}
+                    </time>
 
-            </div>
-        `;
-    }
+                  </div>
+
+                </div>
+                `
+            )
+            .join("")
+        :
+          `
+          <div class="empty-state">
+            Nessuna notifica.
+          </div>
+          `;
+
+
+  updateBadge();
 }
 
-function openSearch() {
 
-    navigate("search");
+function updateBadge() {
 
-    setTimeout(() => {
+  const unread =
+    state.data?.notifications
+      ?.filter(
+        notification =>
+          notification.unread
+      )
+      .length || 0;
 
-        document
-            .getElementById(
-                "global-search"
-            )
-            ?.focus();
 
-    }, 100);
+  $("notification-badge")
+    .textContent =
+    unread;
+
+
+  $("notification-badge")
+    .classList.toggle(
+      "hidden",
+      unread === 0
+    );
+}
+
+
+/* =========================================================
+   PROFILE
+   ========================================================= */
+
+function renderProfile() {
+
+  if (!state.currentUser)
+    return;
+
+
+  const user =
+    state.currentUser;
+
+
+  $("profile-avatar")
+    .textContent =
+    user.avatar ||
+    "👤";
+
+
+  $("profile-display-name")
+    .textContent =
+    user.displayName;
+
+
+  $("profile-username")
+    .textContent =
+    user.username;
+
+
+  $("profile-bio")
+    .textContent =
+    user.bio ||
+    "La tua bio";
+
+
+  $("profile-friends-count")
+    .textContent =
+    state.data.friends.length;
+
+
+  $("profile-private-count")
+    .textContent =
+    state.data.privateIds.length;
+
+
+  $("profile-events-count")
+    .textContent =
+    state.data.events.length;
+}
+
+
+function renderSettings() {
+
+  applyLanguage();
 }
 
 
 /* =========================================================
    MODALS
-========================================================= */
+   ========================================================= */
 
-function openModal(content) {
+function openModal(html) {
 
-    const modal =
-        document.getElementById(
-            "global-modal"
-        );
+  $("modal-body")
+    .innerHTML =
+    html;
 
-    const body =
-        document.getElementById(
-            "modal-body"
-        );
+  $("global-modal")
+    .classList
+    .remove("hidden");
 
-    if (!modal || !body) return;
-
-    body.innerHTML =
-        content;
-
-    modal.classList.remove(
-        "hidden"
-    );
-
-    modal.setAttribute(
-        "aria-hidden",
-        "false"
+  $("global-modal")
+    .setAttribute(
+      "aria-hidden",
+      "false"
     );
 }
+
 
 function closeModal() {
 
-    const modal =
-        document.getElementById(
-            "global-modal"
-        );
+  $("global-modal")
+    .classList
+    .add("hidden");
 
-    modal?.classList.add(
-        "hidden"
+  $("global-modal")
+    .setAttribute(
+      "aria-hidden",
+      "true"
     );
 
-    modal?.setAttribute(
-        "aria-hidden",
-        "true"
+  $("modal-body")
+    .innerHTML = "";
+}
+
+
+/* =========================================================
+   CREATE EVENT
+   ========================================================= */
+
+function openEventModal(
+  prefill = {}
+) {
+
+  const friendChoices =
+    state.data.friends
+      .map(
+        friend =>
+          `
+          <label class="choice-item">
+
+            <input
+              type="checkbox"
+              name="participants"
+              value="${friend.id}"
+              ${prefill.family ? "" : "checked"}
+            >
+
+            ${friend.avatar}
+            ${esc(friend.name)}
+
+          </label>
+          `
+      )
+      .join("");
+
+
+  openModal(`
+
+    <h2>
+      Organizza qualcosa
+    </h2>
+
+    <p class="modal-subtitle">
+      Attività, momento, luogo, persone e budget
+      in un unico programma.
+    </p>
+
+
+    <form
+      id="event-modal-form"
+      class="modal-form"
+    >
+
+      <label>Titolo</label>
+
+      <input
+        name="title"
+        placeholder="Es. Cinema sabato"
+        required
+      >
+
+
+      <div class="mini-grid">
+
+        <div>
+
+          <label>Data</label>
+
+          <input
+            name="date"
+            type="date"
+            value="${
+              prefill.date ||
+              "2026-09-12"
+            }"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>Ora</label>
+
+          <input
+            name="time"
+            type="time"
+            value="${
+              prefill.time ||
+              "20:00"
+            }"
+            required
+          >
+
+        </div>
+
+      </div>
+
+
+      <label>Attività</label>
+
+      <input
+        name="activity"
+        placeholder="Cinema, cena, partita..."
+      >
+
+
+      <label>Luogo</label>
+
+      <input
+        name="place"
+        placeholder="Dove andiamo?"
+      >
+
+
+      <div class="mini-grid">
+
+        <div>
+
+          <label>
+            Budget a persona
+          </label>
+
+          <input
+            name="budget"
+            placeholder="15 €"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>
+            Come arriviamo?
+          </label>
+
+          <select name="transport">
+
+            <option>
+              Auto
+            </option>
+
+            <option>
+              Mezzi
+            </option>
+
+            <option>
+              A piedi
+            </option>
+
+            <option>
+              Da decidere
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+
+      <label>
+        Chi può vedere / partecipare?
+      </label>
+
+
+      <div class="choice-list">
+
+        <label class="choice-item">
+
+          <input
+            type="radio"
+            name="audience"
+            value="friends"
+            checked
+          >
+
+          👥 Tutti gli amici
+
+        </label>
+
+
+        <label class="choice-item">
+
+          <input
+            type="radio"
+            name="audience"
+            value="private"
+          >
+
+          🔒 Privati
+
+        </label>
+
+
+        <label class="choice-item">
+
+          <input
+            type="radio"
+            name="audience"
+            value="selected"
+          >
+
+          ✓ Selezionati
+
+        </label>
+
+      </div>
+
+
+      <div class="choice-list">
+
+        ${friendChoices}
+
+      </div>
+
+
+      <label>
+        Checklist iniziale
+      </label>
+
+      <input
+        name="tasks"
+        placeholder="Es. prenotare, portare biglietti..."
+      >
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
+
+
+        <button
+          class="primary-button"
+          type="submit"
+        >
+          Crea programma
+        </button>
+
+      </div>
+
+    </form>
+
+  `);
+
+
+  $("event-modal-form")
+    .addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+
+        const formData =
+          new FormData(
+            event.target
+          );
+
+
+        const participants =
+          [
+            ...event.target.querySelectorAll(
+              'input[name="participants"]:checked'
+            )
+          ]
+          .map(
+            input =>
+              input.value
+          );
+
+
+        const newEvent = {
+
+          id: uid("e"),
+
+          title:
+            formData.get("title"),
+
+          date:
+            formData.get("date"),
+
+          time:
+            formData.get("time"),
+
+          activity:
+            formData.get("activity") ||
+            "🎯",
+
+          place:
+            formData.get("place") ||
+            "Da decidere",
+
+          budget:
+            formData.get("budget") ||
+            "Da decidere",
+
+          participants,
+
+          status:
+            "pending",
+
+          votes: {
+            yes: 0,
+            maybe: 0,
+            no: 0
+          },
+
+          myVote:
+            "yes",
+
+          audience:
+            formData.get("audience"),
+
+          transport:
+            formData.get("transport"),
+
+          tasks:
+            String(
+              formData.get("tasks") ||
+              ""
+            )
+            .split(",")
+            .map(
+              task =>
+                task.trim()
+            )
+            .filter(Boolean),
+
+          messages: []
+        };
+
+
+        newEvent.votes.yes = 1;
+
+
+        state.data.events.unshift(
+          newEvent
+        );
+
+
+        if (
+          state.notificationSettings.events
+        ) {
+
+          state.data.notifications.unshift({
+
+            id: uid("n"),
+
+            icon: "🎯",
+
+            title:
+              "Nuovo programma",
+
+            text:
+              `Hai creato “${newEvent.title}”.`,
+
+            time: "Ora",
+
+            unread: true
+          });
+        }
+
+
+        saveData();
+
+        closeModal();
+
+        renderAll();
+
+        showPage("events");
+
+        toast(
+          "Programma creato."
+        );
+      }
     );
 }
 
 
 /* =========================================================
-   MODAL ACTIONS
-========================================================= */
+   UPDATE / STORY
+   ========================================================= */
 
-async function handleModalAction(action) {
+function openUpdateModal() {
 
-    switch (action) {
+  const friends =
+    state.data.friends;
 
-        case "save-language": {
 
-            const selected =
-                document.querySelector(
-                    'input[name="language"]:checked'
-                );
+  openModal(`
 
-            if (!selected) return;
+    <h2>
+      Nuovo aggiornamento
+    </h2>
 
-            SYNC.state.language =
-                selected.value;
+    <p class="modal-subtitle">
+      Condividi un'idea, un programma o qualcosa
+      che vuoi fare con le persone che scegli.
+    </p>
 
-            localStorage.setItem(
-                "sync_language",
-                SYNC.state.language
-            );
 
-            applyLanguage();
+    <form
+      id="update-form"
+      class="modal-form"
+    >
 
-            closeModal();
+      <label>
+        Cosa vuoi condividere?
+      </label>
 
-            showToast(
-                "Lingua aggiornata."
-            );
+      <textarea
+        name="text"
+        placeholder="Es. Voglio andare a vedere il nuovo film..."
+        required
+      ></textarea>
 
-            break;
+
+      <label>
+        Chi può vederlo?
+      </label>
+
+
+      <div class="choice-list">
+
+        <label class="choice-item">
+
+          <input
+            type="radio"
+            name="audience"
+            value="friends"
+            checked
+          >
+
+          👥 Tutti gli amici
+
+        </label>
+
+
+        <label class="choice-item">
+
+          <input
+            type="radio"
+            name="audience"
+            value="private"
+          >
+
+          🔒 Privati
+
+        </label>
+
+
+        <label class="choice-item">
+
+          <input
+            type="radio"
+            name="audience"
+            value="selected"
+          >
+
+          ✓ Selezionati
+
+        </label>
+
+      </div>
+
+
+      <div class="choice-list">
+
+        ${
+          friends
+            .map(
+              friend =>
+                `
+                <label class="choice-item">
+
+                  <input
+                    type="checkbox"
+                    name="selected"
+                    value="${friend.id}"
+                  >
+
+                  ${friend.avatar}
+                  ${esc(friend.name)}
+
+                </label>
+                `
+            )
+            .join("")
         }
 
-        case "save-availability-visibility": {
+      </div>
 
-            const selected =
-                document.querySelector(
-                    'input[name="availabilityVisibility"]:checked'
-                );
 
-            if (!selected) return;
+      <div class="modal-actions">
 
-            SYNC.state
-                .availabilityVisibility =
-                selected.value;
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
 
-            saveState();
+        <button
+          type="submit"
+          class="primary-button"
+        >
+          Pubblica
+        </button>
 
-            closeModal();
+      </div>
 
-            updateAvailabilityVisibilityUI();
+    </form>
 
-            showToast(
-                "Visibilità disponibilità aggiornata."
-            );
+  `);
 
-            break;
-        }
 
-        case "copy-invite": {
+  $("update-form")
+    .addEventListener(
+      "submit",
+      event => {
 
-            const input =
-                document.getElementById(
-                    "invite-link"
-                );
+        event.preventDefault();
 
-            if (!input) return;
+        const formData =
+          new FormData(
+            event.target
+          );
 
-            try {
 
-                await navigator.clipboard.writeText(
-                    input.value
-                );
+        const selected =
+          [
+            ...event.target.querySelectorAll(
+              'input[name="selected"]:checked'
+            )
+          ]
+          .map(
+            input =>
+              input.value
+          );
 
-                showToast(
-                    "Link copiato."
-                );
 
-            } catch {
+        const update = {
 
-                input.select();
+          id: uid("u"),
 
-                document.execCommand(
-                    "copy"
-                );
+          text:
+            formData.get("text"),
 
-                showToast(
-                    "Link copiato."
-                );
-            }
+          audience:
+            formData.get("audience"),
 
-            break;
-        }
+          selected,
 
-        case "native-share": {
+          date:
+            new Date().toISOString(),
 
-            const user =
-                SYNC.state.currentUser;
+          responses: []
+        };
 
-            const link =
-                `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(
-                    user.username
-                )}`;
 
-            if (navigator.share) {
-
-                await navigator.share({
-                    title: "Invito SYNC",
-                    text:
-                        `${user.displayName} ti ha invitato su SYNC.`,
-                    url: link
-                });
-
-            } else {
-
-                showToast(
-                    "La condivisione non è disponibile su questo dispositivo."
-                );
-            }
-
-            break;
-        }
-
-        case "search-friend":
-            searchFriend();
-            break;
-
-        case "invite-friend":
-            inviteFriend();
-            break;
-
-        case "cancel-delete":
-            closeModal();
-            break;
-
-        case "confirm-delete":
-
-            SYNC.state.currentUser =
-                null;
-
-            SYNC.state.friends = [];
-            SYNC.state.privateFriends = [];
-            SYNC.state.events = [];
-            SYNC.state.commitments = [];
-            SYNC.state.notifications = [];
-
-            saveState();
-
-            closeModal();
-
-            updateAuthState();
-
-            showAuthView(
-                "login"
-            );
-
-            showToast(
-                "Account eliminato."
-            );
-
-            break;
-
-        case "edit-event": {
-
-            const eventId =
-                document.querySelector(
-                    "[data-event-id]"
-                )?.dataset.eventId;
-
-            if (eventId) {
-                editEvent(eventId);
-            }
-
-            break;
-        }
-
-        case "event-chat":
-
-            showToast(
-                "La chat dell'evento sarà collegata al backend."
-            );
-
-            break;
-    }
-}
-
-function updateAvailabilityVisibilityUI() {
-
-    const element =
-        document.getElementById(
-            "availability-visibility"
+        state.data.updates.unshift(
+          update
         );
 
-    if (!element) return;
 
-    const labels = {
+        saveData();
 
-        all:
-            "👥 Tutti gli amici",
+        closeModal();
 
-        friends:
-            "👥 Tutti gli amici",
-
-        private:
-            "🔒 Solo privata",
-
-        selected:
-            "☑️ Persone selezionate",
-
-        none:
-            "🚫 Nessuno"
-    };
-
-    element.textContent =
-        labels[
-            SYNC.state
-                .availabilityVisibility
-        ] ||
-        labels.friends;
+        toast(
+          "Aggiornamento pubblicato."
+        );
+      }
+    );
 }
 
 
 /* =========================================================
-   EVENT EDIT
-========================================================= */
+   COMMITMENT
+   ========================================================= */
 
-function editEvent(id) {
+function openCommitmentModal() {
 
-    const event =
-        SYNC.state.events.find(
-            item => item.id === id
-        );
+  openModal(`
 
-    if (!event) return;
+    <h2>
+      Nuovo impegno
+    </h2>
 
-    openModal(`
-        <h2>✏️ Modifica programma</h2>
+    <p class="modal-subtitle">
+      Può essere personale, familiare o ricorrente.
+    </p>
 
-        <form
-            class="modal-form"
-            id="edit-event-form"
-            data-event-id="${escapeHTML(id)}"
+
+    <form
+      id="commitment-form"
+      class="modal-form"
+    >
+
+      <label>Titolo</label>
+
+      <input
+        name="title"
+        placeholder="Scuola, allenamento, visita..."
+        required
+      >
+
+
+      <div class="mini-grid">
+
+        <div>
+
+          <label>Data</label>
+
+          <input
+            name="date"
+            type="date"
+            value="2026-09-10"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>Inizio</label>
+
+          <input
+            name="start"
+            type="time"
+            value="17:00"
+            required
+          >
+
+        </div>
+
+      </div>
+
+
+      <div class="mini-grid">
+
+        <div>
+
+          <label>Fine</label>
+
+          <input
+            name="end"
+            type="time"
+            value="18:00"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>Luogo</label>
+
+          <input
+            name="place"
+            placeholder="Luogo"
+          >
+
+        </div>
+
+      </div>
+
+
+      <label>
+        Privacy
+      </label>
+
+      <select name="privacy">
+
+        <option value="busy">
+          Mostra solo “occupato”
+        </option>
+
+        <option value="details">
+          Mostra i dettagli
+        </option>
+
+      </select>
+
+
+      <label>
+
+        <input
+          name="recurring"
+          type="checkbox"
+          style="width:auto"
         >
 
-            <label>Titolo</label>
+        Ripeti ogni settimana
 
-            <input
-                name="title"
-                value="${escapeHTML(
-                    event.title
-                )}"
-                required
-            >
+      </label>
 
-            <label>Data</label>
 
-            <input
-                type="date"
-                name="date"
-                value="${escapeHTML(
-                    event.date
-                )}"
-                required
-            >
+      <label>
 
-            <label>Ora</label>
+        <input
+          name="family"
+          type="checkbox"
+          style="width:auto"
+        >
 
-            <input
-                type="time"
-                name="time"
-                value="${escapeHTML(
-                    event.time || ""
-                )}"
-                required
-            >
+        Impegno familiare
 
-            <label>Luogo</label>
+      </label>
 
-            <input
-                name="location"
-                value="${escapeHTML(
-                    event.location || ""
-                )}"
-            >
 
-            <label>Budget per persona</label>
+      <div class="modal-actions">
 
-            <input
-                type="number"
-                name="budget"
-                min="0"
-                step="0.50"
-                value="${event.budget || 0}"
-            >
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
 
-            <label>Descrizione</label>
+        <button
+          class="primary-button"
+        >
+          Salva impegno
+        </button>
 
-            <textarea
-                name="description"
-            >${escapeHTML(
-                event.description || ""
-            )}</textarea>
+      </div>
 
-            <div class="modal-actions">
+    </form>
 
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    Salva modifiche
-                </button>
+  `);
 
-            </div>
 
-        </form>
-    `);
-}
+  $("commitment-form")
+    .addEventListener(
+      "submit",
+      event => {
 
-function submitEditEvent(event) {
+        event.preventDefault();
 
-    event.preventDefault();
 
-    const form =
-        event.currentTarget;
+        const data =
+          new FormData(
+            event.target
+          );
 
-    const id =
-        form.dataset.eventId;
 
-    const target =
-        SYNC.state.events.find(
-            item => item.id === id
+        const commitment = {
+
+          id: uid("c"),
+
+          title:
+            data.get("title"),
+
+          date:
+            data.get("date"),
+
+          start:
+            data.get("start"),
+
+          end:
+            data.get("end"),
+
+          place:
+            data.get("place") ||
+            "",
+
+          privacy:
+            data.get("privacy"),
+
+          recurring:
+            data.get("recurring") ===
+            "on",
+
+          family:
+            data.get("family") ===
+            "on"
+        };
+
+
+        state.data.commitments.push(
+          commitment
         );
 
-    if (!target) return;
 
-    const data =
-        new FormData(form);
+        saveData();
 
-    target.title =
-        String(
-            data.get("title") || ""
-        ).trim();
+        closeModal();
 
-    target.date =
-        String(
-            data.get("date") || ""
+        renderAll();
+
+        toast(
+          "Impegno aggiunto."
         );
-
-    target.time =
-        String(
-            data.get("time") || ""
-        );
-
-    target.location =
-        String(
-            data.get("location") || ""
-        ).trim();
-
-    target.budget =
-        Number(
-            data.get("budget") || 0
-        );
-
-    target.description =
-        String(
-            data.get("description") || ""
-        ).trim();
-
-    saveState();
-
-    closeModal();
-
-    renderEvents();
-
-    showToast(
-        "Programma aggiornato."
+      }
     );
 }
 
 
 /* =========================================================
-   SEARCH / FRIEND INPUT
-========================================================= */
+   AVAILABILITY
+   ========================================================= */
 
-function handleGlobalSearchInput(event) {
+function openAvailabilityModal() {
 
-    if (
-        event.target.id !==
-        "global-search"
-    ) {
-        return;
-    }
+  const current =
+    state.data.myAvailability ||
+    "free";
 
-    clearTimeout(
-        searchTimer
-    );
 
-    const query =
-        event.target.value;
+  openModal(`
 
-    if (!query.trim()) {
+    <h2>
+      La tua disponibilità
+    </h2>
 
-        performSearch("");
+    <p class="modal-subtitle">
+      Indica come sei disponibile.
+      Gli altri vedranno solo ciò che permetti.
+    </p>
 
-        return;
-    }
 
-    searchTimer =
-        setTimeout(() => {
-            performSearch(query);
-        }, 500);
-}
+    <div class="choice-list">
 
-function handleFriendSearchInput(event) {
+      <label class="choice-item">
 
-    if (
-        event.target.id !==
-        "friend-search-input"
-    ) {
-        return;
-    }
+        <input
+          type="radio"
+          name="avail"
+          value="free"
+          ${
+            current === "free"
+              ? "checked"
+              : ""
+          }
+        >
 
-    const query =
-        event.target.value
-            .trim()
-            .toLowerCase();
+        🟢 Libero
 
-    const container =
-        document.getElementById(
-            "friend-search-results"
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="radio"
+          name="avail"
+          value="partial"
+          ${
+            current === "partial"
+              ? "checked"
+              : ""
+          }
+        >
+
+        🟡 Parzialmente disponibile
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="radio"
+          name="avail"
+          value="busy"
+          ${
+            current === "busy"
+              ? "checked"
+              : ""
+          }
+        >
+
+        🔴 Occupato
+
+      </label>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="secondary-button"
+        data-action="close-modal"
+      >
+        Chiudi
+      </button>
+
+      <button
+        class="primary-button"
+        id="save-availability"
+      >
+        Salva
+      </button>
+
+    </div>
+
+  `);
+
+
+  $("save-availability")
+    .onclick = () => {
+
+      const selected =
+        qs(
+          'input[name="avail"]:checked'
         );
 
-    if (!container) return;
 
-    const results =
-        SYNC.state.friends.filter(
+      if (!selected)
+        return;
+
+
+      state.data.myAvailability =
+        selected.value;
+
+
+      saveData();
+
+      closeModal();
+
+      toast(
+        "Disponibilità aggiornata."
+      );
+    };
+}
+
+
+/* =========================================================
+   AVAILABILITY PRIVACY
+   ========================================================= */
+
+function openAvailabilityVisibility() {
+
+  openModal(`
+
+    <h2>
+      Visibilità disponibilità
+    </h2>
+
+    <p class="modal-subtitle">
+      Tu decidi chi può vedere quando sei libero.
+    </p>
+
+
+    <div class="choice-list">
+
+      ${[
+        ["none", "🚫 Nessuno"],
+        ["private", "🔒 Privati"],
+        ["friends", "👥 Tutti gli amici"],
+        ["selected", "✓ Selezionati"]
+      ]
+        .map(
+          ([value, label]) =>
+            `
+            <label
+              class="
+                choice-item
+                ${
+                  state.availabilityVisibility ===
+                  value
+                    ? "selected"
+                    : ""
+                }
+              "
+            >
+
+              <input
+                type="radio"
+                name="visibility"
+                value="${value}"
+                ${
+                  state.availabilityVisibility ===
+                  value
+                    ? "checked"
+                    : ""
+                }
+              >
+
+              ${label}
+
+            </label>
+            `
+        )
+        .join("")}
+
+    </div>
+
+
+    <div
+      id="availability-selected-box"
+      class="choice-list"
+      style="margin-top:10px"
+    >
+
+      ${
+        state.data.friends
+          .map(
             friend =>
-                friend.displayName
-                    .toLowerCase()
-                    .includes(query) ||
-                friend.username
-                    .toLowerCase()
-                    .includes(
-                        query.replace(
-                            /^@/,
-                            ""
-                        )
-                    )
+              `
+              <label class="choice-item">
+
+                <input
+                  type="checkbox"
+                  name="availability-selected"
+                  value="${friend.id}"
+                  ${
+                    state.availabilitySelected
+                      .includes(friend.id)
+                      ? "checked"
+                      : ""
+                  }
+                >
+
+                ${friend.avatar}
+                ${esc(friend.name)}
+
+              </label>
+              `
+          )
+          .join("")
+      }
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="secondary-button"
+        data-action="close-modal"
+      >
+        Annulla
+      </button>
+
+      <button
+        class="primary-button"
+        id="save-visibility"
+      >
+        Salva
+      </button>
+
+    </div>
+
+  `);
+
+
+  $("save-visibility")
+    .onclick = () => {
+
+      const visibility =
+        qs(
+          'input[name="visibility"]:checked'
         );
 
-    container.innerHTML =
-        results.map(
-            friend => `
 
-            <article class="person-card">
+      state.availabilityVisibility =
+        visibility
+          ? visibility.value
+          : "friends";
 
-                <div class="person-avatar">
-                    ${escapeHTML(
-                        friend.avatar ||
-                        "👤"
-                    )}
-                </div>
 
-                <div class="person-info">
+      state.availabilitySelected =
+        qsa(
+          'input[name="availability-selected"]:checked'
+        )
+        .map(
+          input =>
+            input.value
+        );
 
-                    <strong>
-                        ${escapeHTML(
-                            friend.displayName
-                        )}
-                    </strong>
 
-                    <span>
-                        @${escapeHTML(
-                            friend.username
-                        )}
-                    </span>
+      saveSettings();
 
-                </div>
+      closeModal();
 
-                <button
-                    class="primary-button compact"
-                    data-add-search-friend="${escapeHTML(
-                        friend.id
-                    )}"
-                >
-                    Aggiungi
-                </button>
+      renderCalendar();
 
-            </article>
-
-        `
-        ).join("");
+      toast(
+        "Visibilità aggiornata."
+      );
+    };
 }
 
 
 /* =========================================================
-   DELETE / OPEN EVENT
-========================================================= */
+   PRIVATE LIST
+   ========================================================= */
 
-function deleteEvent(id) {
+function openPrivateList() {
 
-    const event =
-        SYNC.state.events.find(
-            item => item.id === id
+  openModal(`
+
+    <h2>
+      Lista privata
+    </h2>
+
+    <p class="modal-subtitle">
+      Scegli le persone che fanno parte dei tuoi
+      Privati/Stretti.
+    </p>
+
+
+    <div class="choice-list">
+
+      ${
+        state.data.friends
+          .map(
+            friend =>
+              `
+              <label class="choice-item">
+
+                <input
+                  type="checkbox"
+                  name="private"
+                  value="${friend.id}"
+                  ${
+                    state.data.privateIds
+                      .includes(friend.id)
+                      ? "checked"
+                      : ""
+                  }
+                >
+
+                ${friend.avatar}
+                ${esc(friend.name)}
+
+                <span style="margin-left:auto">
+                  ${esc(friend.username)}
+                </span>
+
+              </label>
+              `
+          )
+          .join("")
+      }
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="secondary-button"
+        data-action="close-modal"
+      >
+        Annulla
+      </button>
+
+      <button
+        class="primary-button"
+        id="save-private"
+      >
+        Salva
+      </button>
+
+    </div>
+
+  `);
+
+
+  $("save-private")
+    .onclick = () => {
+
+      state.data.privateIds =
+        qsa(
+          'input[name="private"]:checked',
+          $("modal-body")
+        )
+        .map(
+          input =>
+            input.value
         );
 
-    if (!event) return;
 
-    const confirmed =
-        window.confirm(
-            `Eliminare "${event.title}"?`
+      state.data.friends
+        .forEach(
+          friend => {
+
+            friend.private =
+              state.data.privateIds
+                .includes(friend.id);
+          }
         );
 
-    if (!confirmed) return;
 
-    SYNC.state.events =
-        SYNC.state.events.filter(
-            item => item.id !== id
-        );
+      saveData();
 
-    saveState();
+      closeModal();
 
-    renderEvents();
+      renderFriends();
 
-    updateProfileUI();
+      renderProfile();
 
-    showToast(
-        "Programma eliminato."
-    );
+      toast(
+        "Lista privata aggiornata."
+      );
+    };
 }
 
-function openEvent(id) {
 
-    const event =
-        SYNC.state.events.find(
-            item => item.id === id
-        );
+/* =========================================================
+   PRIVACY
+   ========================================================= */
 
-    if (!event) return;
+function openPrivacy() {
 
-    openModal(`
+  openModal(`
 
-        <h2>
-            🎯 ${escapeHTML(
-                event.title
-            )}
-        </h2>
+    <h2>
+      Privacy e sicurezza
+    </h2>
 
-        <p class="modal-subtitle">
-            ${escapeHTML(
-                event.description ||
-                "Nessuna descrizione."
-            )}
+    <p class="modal-subtitle">
+      SYNC separa Amici, Privati e Selezionati.
+      Non usa il GPS continuo.
+    </p>
+
+
+    <div class="info-card">
+
+      <span>🛡️</span>
+
+      <div>
+
+        <strong>
+          Disponibilità
+        </strong>
+
+        <p>
+          Puoi mostrare solo libero/occupato
+          oppure controllare chi vede i dettagli.
         </p>
 
-        <div class="info-card">
+      </div>
 
-            <span>📅</span>
+    </div>
 
-            <div>
 
-                <strong>
-                    ${escapeHTML(
-                        event.date
-                    )}
-                </strong>
+    <div class="info-card">
 
-                <p>
-                    🕐 ${escapeHTML(
-                        event.time || "—"
-                    )}
-                </p>
+      <span>🔒</span>
 
-            </div>
+      <div>
 
-        </div>
+        <strong>
+          Programmi
+        </strong>
 
-        <div class="info-card">
+        <p>
+          Ogni programma può essere condiviso
+          con tutti gli amici, i Privati
+          o persone specifiche.
+        </p>
 
-            <span>📍</span>
+      </div>
 
-            <div>
+    </div>
 
-                <strong>
-                    Luogo
-                </strong>
 
-                <p>
-                    ${escapeHTML(
-                        event.location ||
-                        "Da decidere"
-                    )}
-                </p>
+    <div class="info-card">
 
-            </div>
+      <span>📍</span>
 
-        </div>
+      <div>
 
-        <div class="info-card">
+        <strong>
+          Posizione
+        </strong>
 
-            <span>👥</span>
+        <p>
+          SYNC non richiede il tracciamento
+          GPS continuo.
+        </p>
 
-            <div>
+      </div>
 
-                <strong>
-                    Partecipanti
-                </strong>
+    </div>
 
-                <p>
-                    ${
-                        event.participants
-                            ?.length || 0
-                    } invitati
-                </p>
 
-            </div>
+    <div class="modal-actions">
 
-        </div>
+      <button
+        class="primary-button"
+        data-action="close-modal"
+      >
+        Ok
+      </button>
 
-        <div class="modal-actions">
+    </div>
 
-            <button
-                class="secondary-button"
-                data-modal-action="edit-event"
-                data-event-id="${escapeHTML(id)}"
-            >
-                Modifica
-            </button>
+  `);
+}
 
-            <button
-                class="primary-button"
-                data-modal-action="event-chat"
-                data-event-id="${escapeHTML(id)}"
-            >
-                💬 Chat
-            </button>
 
-        </div>
-    `);
+/* =========================================================
+   BLOCKED USERS
+   ========================================================= */
+
+function openBlocked() {
+
+  openModal(`
+
+    <h2>
+      Utenti bloccati
+    </h2>
+
+    <p class="modal-subtitle">
+      Le persone bloccate non vengono coinvolte
+      nei tuoi programmi.
+    </p>
+
+
+    ${
+      state.data.blocked.length
+
+        ? state.data.blocked
+            .map(
+              blocked =>
+                `
+                <div class="person-card">
+                  <strong>
+                    ${esc(blocked)}
+                  </strong>
+                </div>
+                `
+            )
+            .join("")
+
+        : `
+          <div class="empty-state">
+            Non hai utenti bloccati.
+          </div>
+          `
+    }
+
+
+    <div class="modal-actions">
+
+      <button
+        class="primary-button"
+        data-action="close-modal"
+      >
+        Chiudi
+      </button>
+
+    </div>
+
+  `);
+}
+
+
+/* =========================================================
+   ADD FRIEND
+   ========================================================= */
+
+function openAddFriend() {
+
+  openModal(`
+
+    <h2>
+      Aggiungi un amico
+    </h2>
+
+    <p class="modal-subtitle">
+      Demo locale: puoi aggiungere una persona
+      per testare SYNC.
+    </p>
+
+
+    <form
+      id="friend-form"
+      class="modal-form"
+    >
+
+      <label>
+        Nome
+      </label>
+
+      <input
+        name="name"
+        required
+        placeholder="Nome e cognome"
+      >
+
+
+      <label>
+        Username
+      </label>
+
+      <input
+        name="username"
+        placeholder="@utente"
+      >
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
+
+        <button
+          class="primary-button"
+        >
+          Aggiungi
+        </button>
+
+      </div>
+
+    </form>
+
+  `);
+
+
+  $("friend-form")
+    .addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+
+        const data =
+          new FormData(
+            event.target
+          );
+
+
+        const username =
+          String(
+            data.get("username") ||
+            "utente"
+          )
+          .replace(/^@/, "");
+
+
+        state.data.friends.push({
+
+          id: uid("f"),
+
+          name:
+            data.get("name"),
+
+          username:
+            "@" + username,
+
+          avatar:
+            "🙂",
+
+          private:
+            false,
+
+          availability:
+            "free"
+        });
+
+
+        saveData();
+
+        closeModal();
+
+        renderFriends();
+
+        renderProfile();
+
+        toast(
+          "Amico aggiunto."
+        );
+      }
+    );
+}
+
+
+/* =========================================================
+   FAMILY MEMBER
+   ========================================================= */
+
+function openFamilyMember() {
+
+  openModal(`
+
+    <h2>
+      Aggiungi familiare
+    </h2>
+
+
+    <form
+      id="family-form"
+      class="modal-form"
+    >
+
+      <label>
+        Nome
+      </label>
+
+      <input
+        name="name"
+        required
+      >
+
+
+      <label>
+        Ruolo
+      </label>
+
+      <input
+        name="role"
+        placeholder="Mamma, papà, fratello..."
+      >
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
+
+        <button
+          class="primary-button"
+        >
+          Aggiungi
+        </button>
+
+      </div>
+
+    </form>
+
+  `);
+
+
+  $("family-form")
+    .addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+
+        const data =
+          new FormData(
+            event.target
+          );
+
+
+        state.data.family.push({
+
+          id: uid("m"),
+
+          name:
+            data.get("name"),
+
+          role:
+            data.get("role") ||
+            "Famiglia",
+
+          avatar:
+            "👤"
+        });
+
+
+        saveData();
+
+        closeModal();
+
+        renderFamily();
+
+        toast(
+          "Familiare aggiunto."
+        );
+      }
+    );
+}
+
+
+/* =========================================================
+   FAMILY SETTINGS
+   ========================================================= */
+
+function openFamilySettings() {
+
+  openModal(`
+
+    <h2>
+      Impostazioni famiglia
+    </h2>
+
+    <p class="modal-subtitle">
+      La famiglia è una comunità separata e privata.
+    </p>
+
+
+    <div class="choice-list">
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          checked
+        >
+
+        Mostra disponibilità alla famiglia
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          checked
+        >
+
+        Avvisa sui nuovi impegni
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          checked
+        >
+
+        Permetti programmi familiari
+
+      </label>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="primary-button"
+        data-action="close-modal"
+      >
+        Salva
+      </button>
+
+    </div>
+
+  `);
+}
+
+
+/* =========================================================
+   PROFILE EDIT
+   ========================================================= */
+
+function openProfileEdit() {
+
+  const user =
+    state.currentUser;
+
+
+  openModal(`
+
+    <h2>
+      Modifica profilo
+    </h2>
+
+
+    <form
+      id="profile-form"
+      class="modal-form"
+    >
+
+      <label>
+        Nome
+      </label>
+
+      <input
+        name="name"
+        value="${esc(user.displayName)}"
+        required
+      >
+
+
+      <label>
+        Username
+      </label>
+
+      <input
+        name="username"
+        value="${esc(user.username)}"
+        required
+      >
+
+
+      <label>
+        Bio
+      </label>
+
+      <textarea
+        name="bio"
+      >${esc(user.bio || "")}</textarea>
+
+
+      <label>
+        Avatar
+      </label>
+
+      <input
+        name="avatar"
+        value="${esc(user.avatar || "👤")}"
+        maxlength="4"
+      >
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
+
+        <button
+          class="primary-button"
+        >
+          Salva
+        </button>
+
+      </div>
+
+    </form>
+
+  `);
+
+
+  $("profile-form")
+    .addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+
+        const data =
+          new FormData(
+            event.target
+          );
+
+
+        state.currentUser.displayName =
+          data.get("name");
+
+
+        const username =
+          String(
+            data.get("username")
+          )
+          .replace(/^@/, "");
+
+
+        state.currentUser.username =
+          "@" + username;
+
+
+        state.currentUser.bio =
+          data.get("bio");
+
+
+        state.currentUser.avatar =
+          data.get("avatar") ||
+          "👤";
+
+
+        const accounts =
+          loadJSON(
+            KEYS.accounts,
+            []
+          );
+
+
+        const index =
+          accounts.findIndex(
+            account =>
+              account.id ===
+              state.currentUser.id
+          );
+
+
+        if (index >= 0) {
+
+          accounts[index] =
+            state.currentUser;
+
+          saveJSON(
+            KEYS.accounts,
+            accounts
+          );
+        }
+
+
+        closeModal();
+
+        renderAll();
+
+        toast(
+          "Profilo aggiornato."
+        );
+      }
+    );
+}
+
+
+/* =========================================================
+   PASSWORD
+   ========================================================= */
+
+function openPasswordChange() {
+
+  openModal(`
+
+    <h2>
+      Cambia password
+    </h2>
+
+
+    <form
+      id="pass-form"
+      class="modal-form"
+    >
+
+      <label>
+        Vecchia password
+      </label>
+
+      <input
+        type="password"
+        name="old"
+        required
+      >
+
+
+      <label>
+        Nuova password
+      </label>
+
+      <input
+        type="password"
+        name="new"
+        minlength="6"
+        required
+      >
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Annulla
+        </button>
+
+        <button
+          class="primary-button"
+        >
+          Salva
+        </button>
+
+      </div>
+
+    </form>
+
+  `);
+
+
+  $("pass-form")
+    .addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+
+        const data =
+          new FormData(
+            event.target
+          );
+
+
+        if (
+          data.get("old") !==
+          state.currentUser.password
+        ) {
+
+          toast(
+            "Vecchia password non corretta."
+          );
+
+          return;
+        }
+
+
+        const newPassword =
+          String(
+            data.get("new")
+          );
+
+
+        if (
+          newPassword.length < 6
+        ) {
+
+          toast(
+            "La nuova password deve avere almeno 6 caratteri."
+          );
+
+          return;
+        }
+
+
+        state.currentUser.password =
+          newPassword;
+
+
+        const accounts =
+          loadJSON(
+            KEYS.accounts,
+            []
+          );
+
+
+        const index =
+          accounts.findIndex(
+            account =>
+              account.id ===
+              state.currentUser.id
+          );
+
+
+        if (index >= 0) {
+
+          accounts[index] =
+            state.currentUser;
+
+          saveJSON(
+            KEYS.accounts,
+            accounts
+          );
+        }
+
+
+        closeModal();
+
+        toast(
+          "Password aggiornata."
+        );
+      }
+    );
 }
 
 
 /* =========================================================
    DELETE ACCOUNT
-========================================================= */
+   ========================================================= */
 
-function confirmDeleteAccount() {
+function deleteAccount() {
 
-    openModal(`
-        <h2>🗑️ Elimina account</h2>
-
-        <p class="modal-subtitle">
-            Questa operazione eliminerà definitivamente
-            il tuo account e i relativi dati.
-        </p>
-
-        <div class="modal-actions">
-
-            <button
-                class="secondary-button"
-                data-modal-action="cancel-delete"
-            >
-                Annulla
-            </button>
-
-            <button
-                class="danger-button"
-                data-modal-action="confirm-delete"
-            >
-                Elimina definitivamente
-            </button>
-
-        </div>
-    `);
-}
-
-
-/* =========================================================
-   SAMPLE DATA
-========================================================= */
-
-function createSampleDataIfNeeded() {
-
-    if (
-        SYNC.state.currentUser &&
-        SYNC.state.friends.length === 0
-    ) {
-
-        SYNC.state.friends = [
-
-            {
-                id: "friend-1",
-                displayName: "Luca",
-                username: "luca",
-                avatar: "👨🏻"
-            },
-
-            {
-                id: "friend-2",
-                displayName: "Giulia",
-                username: "giulia",
-                avatar: "👩🏻"
-            },
-
-            {
-                id: "friend-3",
-                displayName: "Marco",
-                username: "marco",
-                avatar: "👨🏼"
-            },
-
-            {
-                id: "friend-4",
-                displayName: "Andrea",
-                username: "andrea",
-                avatar: "👨🏽"
-            }
-        ];
-
-        SYNC.state.privateFriends = [
-            "friend-1",
-            "friend-2"
-        ];
-
-        SYNC.state.notifications = [
-
-            {
-                id: "notification-1",
-                icon: "🎬",
-                title: "Cinema sabato",
-                message:
-                    "Hai una votazione da completare.",
-                read: false,
-                createdAt:
-                    new Date().toISOString()
-            },
-
-            {
-                id: "notification-2",
-                icon: "👥",
-                title: "Nuovo amico",
-                message:
-                    "Hai una nuova richiesta.",
-                read: false,
-                createdAt:
-                    new Date().toISOString()
-            }
-
-        ];
-
-        saveState();
-    }
-}
-
-
-/* =========================================================
-   GLOBAL CLICK HANDLER
-========================================================= */
-
-document.addEventListener(
-    "click",
-    async event => {
-
-        const actionElement =
-            event.target.closest(
-                "[data-action]"
-            );
-
-        if (actionElement) {
-
-            const action =
-                actionElement.dataset.action;
-
-            switch (action) {
-
-                case "show-register":
-                    showAuthView("register");
-                    break;
-
-                case "show-login":
-                    showAuthView("login");
-                    break;
-
-                case "forgot-password":
-                    forgotPassword();
-                    break;
-
-                case "logout":
-                    logout();
-                    break;
-
-                case "open-profile":
-                    navigate("profile");
-                    break;
-
-                case "open-notifications":
-                    navigate("notifications");
-                    break;
-
-                case "open-search":
-                    openSearch();
-                    break;
-
-                case "create-event":
-                    createEvent();
-                    break;
-
-                case "create-update":
-                    createUpdate();
-                    break;
-
-                case "create-from-free-time":
-                    createFromFreeTime();
-                    break;
-
-                case "open-friends":
-                    navigate("friends");
-                    break;
-
-                case "open-calendar":
-                    navigate("calendar");
-                    break;
-
-                case "open-availability":
-                    navigate("calendar");
-                    break;
-
-                case "add-friend":
-                    addFriend();
-                    break;
-
-                case "open-private-list":
-
-                    navigate("friends");
-
-                    SYNC.state.friendsTab =
-                        "private";
-
-                    renderFriends();
-
-                    break;
-
-                case "open-privacy":
-                    navigate("settings");
-                    break;
-
-                case "open-settings":
-                    navigate("settings");
-                    break;
-
-                case "manage-availability-visibility":
-                    manageAvailabilityVisibility();
-                    break;
-
-                case "toggle-theme":
-                    toggleTheme();
-                    break;
-
-                case "change-language":
-                    changeLanguage();
-                    break;
-
-                case "notification-settings":
-
-                    showToast(
-                        "Le impostazioni notifiche saranno collegate al backend."
-                    );
-
-                    break;
-
-                case "edit-profile":
-                    editProfile();
-                    break;
-
-                case "change-password":
-
-                    showToast(
-                        "Il cambio password sarà gestito dal backend."
-                    );
-
-                    break;
-
-                case "delete-account":
-                    confirmDeleteAccount();
-                    break;
-
-                case "open-blocked-users":
-
-                    showToast(
-                        "Gestione blocchi pronta per il backend."
-                    );
-
-                    break;
-
-                case "mark-notifications-read":
-                    markNotificationsRead();
-                    break;
-
-                case "create-commitment":
-                    createCommitment();
-                    break;
-
-                case "create-family-event":
-                    createEvent();
-                    break;
-
-                case "add-family-member":
-                    addFriend();
-                    break;
-
-                case "family-settings":
-
-                    showToast(
-                        "Impostazioni famiglia."
-                    );
-
-                    break;
-
-                case "previous-day":
-
-                    showToast(
-                        "Giorno precedente."
-                    );
-
-                    break;
-
-                case "next-day":
-
-                    showToast(
-                        "Giorno successivo."
-                    );
-
-                    break;
-
-                case "go-back":
-                    navigate("home");
-                    break;
-
-                case "close-modal":
-                    closeModal();
-                    break;
-            }
-        }
-
-        const pageTarget =
-            event.target.closest(
-                "[data-page-target]"
-            );
-
-        if (pageTarget) {
-
-            navigate(
-                pageTarget.dataset.pageTarget
-            );
-        }
-
-        const friendAction =
-            event.target.closest(
-                "[data-friend-action]"
-            );
-
-        if (friendAction) {
-
-            if (
-                friendAction.dataset
-                    .friendAction ===
-                "toggle-private"
-            ) {
-
-                togglePrivateFriend(
-                    friendAction.dataset
-                        .friendId
-                );
-            }
-        }
-
-        const friendsTab =
-            event.target.closest(
-                "[data-friends-tab]"
-            );
-
-        if (friendsTab) {
-
-            SYNC.state.friendsTab =
-                friendsTab.dataset.friendsTab;
-
-            document
-                .querySelectorAll(
-                    "[data-friends-tab]"
-                )
-                .forEach(button => {
-
-                    button.classList.toggle(
-                        "active",
-                        button ===
-                            friendsTab
-                    );
-                });
-
-            renderFriends();
-        }
-
-        const eventFilter =
-            event.target.closest(
-                "[data-event-filter]"
-            );
-
-        if (eventFilter) {
-
-            SYNC.state.eventFilter =
-                eventFilter.dataset.eventFilter;
-
-            document
-                .querySelectorAll(
-                    "[data-event-filter]"
-                )
-                .forEach(button => {
-
-                    button.classList.toggle(
-                        "active",
-                        button ===
-                            eventFilter
-                    );
-                });
-
-            renderEvents();
-        }
-
-        const eventAction =
-            event.target.closest(
-                "[data-event-action]"
-            );
-
-        if (eventAction) {
-
-            const id =
-                eventAction.dataset.eventId;
-
-            if (
-                eventAction.dataset
-                    .eventAction ===
-                "delete"
-            ) {
-
-                deleteEvent(id);
-            }
-
-            if (
-                eventAction.dataset
-                    .eventAction ===
-                "open"
-            ) {
-
-                openEvent(id);
-            }
-        }
-
-        const addSearchFriend =
-            event.target.closest(
-                "[data-add-search-friend]"
-            );
-
-        if (addSearchFriend) {
-
-            const id =
-                addSearchFriend.dataset
-                    .addSearchFriend;
-
-            const friend =
-                SYNC.state.friends.find(
-                    item => item.id === id
-                );
-
-            if (friend) {
-
-                showToast(
-                    `${friend.displayName} è già nei tuoi amici.`
-                );
-            }
-        }
-
-        const modalAction =
-            event.target.closest(
-                "[data-modal-action]"
-            );
-
-        if (modalAction) {
-
-            await handleModalAction(
-                modalAction.dataset
-                    .modalAction
-            );
-        }
-    }
-);
-
-
-/* =========================================================
-   FORMS
-========================================================= */
-
-document.addEventListener(
-    "submit",
-    event => {
-
-        switch (event.target.id) {
-
-            case "login-form":
-                login(event);
-                break;
-
-            case "register-form":
-                register(event);
-                break;
-
-            case "forgot-form":
-
-                event.preventDefault();
-
-                closeModal();
-
-                showToast(
-                    "Se il tuo account esiste, riceverai le istruzioni."
-                );
-
-                break;
-
-            case "profile-form": {
-
-                event.preventDefault();
-
-                const data =
-                    new FormData(
-                        event.target
-                    );
-
-                SYNC.state
-                    .currentUser
-                    .displayName =
-                    String(
-                        data.get(
-                            "displayName"
-                        ) || ""
-                    ).trim();
-
-                SYNC.state
-                    .currentUser
-                    .username =
-                    String(
-                        data.get(
-                            "username"
-                        ) || ""
-                    )
-                        .trim()
-                        .replace(
-                            /^@/,
-                            ""
-                        );
-
-                SYNC.state
-                    .currentUser
-                    .bio =
-                    String(
-                        data.get("bio") ||
-                        ""
-                    ).trim();
-
-                saveState();
-
-                updateProfileUI();
-
-                closeModal();
-
-                showToast(
-                    "Profilo aggiornato."
-                );
-
-                break;
-            }
-
-            case "event-form":
-                submitEvent(event);
-                break;
-
-            case "edit-event-form":
-                submitEditEvent(event);
-                break;
-
-            case "commitment-form":
-                submitCommitment(event);
-                break;
-
-            case "update-form":
-                submitUpdate(event);
-                break;
-        }
-    }
-);
-
-
-/* =========================================================
-   INPUT HANDLERS
-========================================================= */
-
-document.addEventListener(
-    "input",
-    event => {
-
-        handleGlobalSearchInput(
-            event
-        );
-
-        handleFriendSearchInput(
-            event
-        );
-    }
-);
-
-
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (event.key === "Escape") {
-            closeModal();
-        }
-    }
-);
-
-
-/* =========================================================
-   SYSTEM THEME
-========================================================= */
-
-window
-    .matchMedia(
-        "(prefers-color-scheme: dark)"
+  if (
+    !confirm(
+      "Eliminare l'account demo da questo dispositivo?"
     )
-    .addEventListener(
-        "change",
-        () => {
+  ) {
 
-            if (
-                SYNC.state.theme ===
-                "system"
-            ) {
-                applyTheme();
-            }
-        }
+    return;
+  }
+
+
+  const accounts =
+    loadJSON(
+      KEYS.accounts,
+      []
+    )
+    .filter(
+      account =>
+        account.id !==
+        state.currentUser.id
     );
 
 
+  saveJSON(
+    KEYS.accounts,
+    accounts
+  );
+
+
+  localStorage.removeItem(
+    KEYS.session
+  );
+
+
+  state.currentUser =
+    null;
+
+
+  showAuth(
+    "register"
+  );
+
+
+  toast(
+    "Account eliminato."
+  );
+}
+
+
 /* =========================================================
-   GLOBAL RENDER
-========================================================= */
+   LANGUAGE MODAL
+   ========================================================= */
 
-function renderAll() {
+function openLanguage() {
 
-    applyLanguage();
+  openModal(`
 
-    applyTheme();
+    <h2>
+      Lingua
+    </h2>
 
-    updateHeader();
+    <p class="modal-subtitle">
+      Scegli la lingua dell'interfaccia.
+    </p>
 
-    updateProfileUI();
+
+    <div class="choice-list">
+
+      <label class="choice-item">
+
+        <input
+          type="radio"
+          name="lang"
+          value="it"
+          ${
+            state.lang === "it"
+              ? "checked"
+              : ""
+          }
+        >
+
+        🇮🇹 Italiano
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="radio"
+          name="lang"
+          value="en"
+          ${
+            state.lang === "en"
+              ? "checked"
+              : ""
+          }
+        >
+
+        🇬🇧 English
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="radio"
+          name="lang"
+          value="es"
+          ${
+            state.lang === "es"
+              ? "checked"
+              : ""
+          }
+        >
+
+        🇪🇸 Español
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="radio"
+          name="lang"
+          value="fr"
+          ${
+            state.lang === "fr"
+              ? "checked"
+              : ""
+          }
+        >
+
+        🇫🇷 Français
+
+      </label>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="secondary-button"
+        data-action="close-modal"
+      >
+        Annulla
+      </button>
+
+      <button
+        class="primary-button"
+        id="save-lang"
+      >
+        Salva
+      </button>
+
+    </div>
+
+  `);
+
+
+  $("save-lang")
+    .onclick = () => {
+
+      const selected =
+        qs(
+          'input[name="lang"]:checked'
+        );
+
+
+      if (!selected)
+        return;
+
+
+      state.lang =
+        selected.value;
+
+
+      saveSettings();
+
+      closeModal();
+
+      renderAll();
+
+      toast(
+        "Lingua aggiornata."
+      );
+    };
+}
+
+
+/* =========================================================
+   NOTIFICATION SETTINGS
+   ========================================================= */
+
+function openNotificationSettings() {
+
+  const settings =
+    state.notificationSettings;
+
+
+  openModal(`
+
+    <h2>
+      Notifiche
+    </h2>
+
+    <p class="modal-subtitle">
+      Scegli cosa vuoi ricevere.
+    </p>
+
+
+    <div class="choice-list">
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          name="events"
+          ${
+            settings.events
+              ? "checked"
+              : ""
+          }
+        >
+
+        Nuovi programmi
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          name="votes"
+          ${
+            settings.votes
+              ? "checked"
+              : ""
+          }
+        >
+
+        Voti e cambiamenti
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          name="reminders"
+          ${
+            settings.reminders
+              ? "checked"
+              : ""
+          }
+        >
+
+        Promemoria
+
+      </label>
+
+
+      <label class="choice-item">
+
+        <input
+          type="checkbox"
+          name="updates"
+          ${
+            settings.updates
+              ? "checked"
+              : ""
+          }
+        >
+
+        Aggiornamenti amici
+
+      </label>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="primary-button"
+        id="save-notification-settings"
+      >
+        Salva
+      </button>
+
+    </div>
+
+  `);
+
+
+  $("save-notification-settings")
+    .onclick = () => {
+
+      state.notificationSettings = {
+
+        events:
+          qs(
+            'input[name="events"]'
+          ).checked,
+
+        votes:
+          qs(
+            'input[name="votes"]'
+          ).checked,
+
+        reminders:
+          qs(
+            'input[name="reminders"]'
+          ).checked,
+
+        updates:
+          qs(
+            'input[name="updates"]'
+          ).checked
+      };
+
+
+      saveSettings();
+
+      closeModal();
+
+      toast(
+        "Preferenze notifiche salvate."
+      );
+    };
+}
+
+
+/* =========================================================
+   VOTING
+   ========================================================= */
+
+function voteEvent(
+  id,
+  vote
+) {
+
+  const event =
+    state.data.events.find(
+      item =>
+        item.id === id
+    );
+
+
+  if (!event)
+    return;
+
+
+  const previous =
+    event.myVote;
+
+
+  if (previous === vote) {
+
+    toast(
+      "Hai già scelto questa risposta."
+    );
+
+    return;
+  }
+
+
+  if (previous) {
+
+    event.votes[previous] =
+      Math.max(
+        0,
+        (event.votes[previous] || 0) - 1
+      );
+  }
+
+
+  event.myVote =
+    vote;
+
+
+  event.votes[vote] =
+    (event.votes[vote] || 0) + 1;
+
+
+  if (
+    event.votes.yes >= 3
+  ) {
+
+    event.status =
+      "confirmed";
+  }
+
+
+  if (
+    state.notificationSettings.votes
+  ) {
+
+    state.data.notifications.unshift({
+
+      id: uid("n"),
+
+      icon: "🗳️",
+
+      title:
+        "Voto salvato",
+
+      text:
+        `Hai risposto al programma “${event.title}”.`,
+
+      time:
+        "Ora",
+
+      unread:
+        true
+    });
+  }
+
+
+  saveData();
+
+  renderEvents();
+
+  renderHome();
+
+  updateBadge();
+
+  toast(
+    "Risposta salvata."
+  );
+}
+
+
+/* =========================================================
+   EVENT ACTIONS
+   ========================================================= */
+
+function eventAction(
+  action,
+  id
+) {
+
+  const event =
+    state.data.events.find(
+      item =>
+        item.id === id
+    );
+
+
+  if (!event)
+    return;
+
+
+  if (
+    action === "details"
+  ) {
+
+    openEventDetails(
+      event
+    );
+
+    return;
+  }
+
+
+  if (
+    action === "archive"
+  ) {
+
+    if (
+      event.status ===
+      "past"
+    ) {
+
+      openEventDetails(
+        event
+      );
+
+      return;
+    }
+
+
+    if (
+      !confirm(
+        "Vuoi archiviare questo programma?"
+      )
+    ) {
+
+      return;
+    }
+
+
+    event.status =
+      "past";
+
+
+    saveData();
+
+    renderAll();
+
+    toast(
+      "Programma archiviato."
+    );
+
+    return;
+  }
+
+
+  if (
+    action ===
+    "toggle-private"
+  ) {
+
+    const index =
+      state.data.privateIds
+        .indexOf(id);
+
+
+    if (index >= 0) {
+
+      state.data.privateIds
+        .splice(
+          index,
+          1
+        );
+
+    } else {
+
+      state.data.privateIds
+        .push(id);
+    }
+
+
+    state.data.friends
+      .forEach(
+        friend => {
+
+          friend.private =
+            state.data.privateIds
+              .includes(
+                friend.id
+              );
+        }
+      );
+
+
+    saveData();
 
     renderFriends();
 
-    renderCalendar();
+    renderProfile();
 
-    renderEvents();
-
-    renderNotifications();
-
-    updateAvailabilityVisibilityUI();
+    toast(
+      "Lista privata aggiornata."
+    );
+  }
 }
 
 
 /* =========================================================
-   INITIALIZATION
-========================================================= */
+   EVENT DETAILS
+   ========================================================= */
 
-function init() {
+function openEventDetails(
+  event
+) {
 
-    createSampleDataIfNeeded();
+  const participants =
+    state.data.friends
+      .filter(
+        friend =>
+          event.participants
+            .includes(
+              friend.id
+            )
+      );
 
-    applyLanguage();
 
-    applyTheme();
+  openModal(`
 
-    updateAuthState();
+    <h2>
+      ${esc(event.title)}
+    </h2>
 
-    updateAvailabilityVisibilityUI();
+    <p class="modal-subtitle">
+      ${esc(event.activity || "Programma SYNC")}
+    </p>
 
-    if (!SYNC.state.currentUser) {
-        showAuthView("login");
-    }
+
+    <div class="event-card">
+
+      <div class="event-card-meta">
+
+        <span>
+          📅
+          ${esc(event.date)}
+          ·
+          ${esc(event.time)}
+        </span>
+
+        <span>
+          📍
+          ${esc(event.place)}
+        </span>
+
+        <span>
+          💶
+          ${esc(event.budget)}
+        </span>
+
+        <span>
+          🚗
+          ${esc(event.transport)}
+        </span>
+
+        <span>
+          👥
+          ${event.participants.length}
+          persone
+        </span>
+
+      </div>
+
+
+      <div class="content-section">
+
+        <strong>
+          Partecipanti
+        </strong>
+
+
+        <div
+          class="choice-list"
+          style="margin-top:10px"
+        >
+
+          ${
+            participants.length
+              ? participants
+                  .map(
+                    friend =>
+                      `
+                      <div class="choice-item">
+
+                        <span>
+                          ${friend.avatar}
+                        </span>
+
+                        <div>
+
+                          <strong>
+                            ${esc(friend.name)}
+                          </strong>
+
+                          <small>
+                            ${esc(friend.username)}
+                          </small>
+
+                        </div>
+
+                      </div>
+                      `
+                  )
+                  .join("")
+              : `
+                <p
+                  class="muted"
+                  style="margin-top:8px"
+                >
+                  Nessun partecipante selezionato.
+                </p>
+                `
+          }
+
+        </div>
+
+      </div>
+
+
+      <div class="content-section">
+
+        <strong>
+          Checklist
+        </strong>
+
+
+        ${
+          event.tasks?.length
+
+            ? event.tasks
+                .map(
+                  task =>
+                    `
+                    <label
+                      class="choice-item"
+                      style="margin-top:8px"
+                    >
+
+                      <input
+                        type="checkbox"
+                      >
+
+                      ${esc(task)}
+
+                    </label>
+                    `
+                )
+                .join("")
+
+            : `
+              <p
+                class="muted"
+                style="margin-top:8px"
+              >
+                Nessuna attività da completare.
+              </p>
+              `
+        }
+
+      </div>
+
+
+      <div class="content-section">
+
+        <strong>
+          Chat del programma
+        </strong>
+
+        <p
+          class="muted"
+          style="margin-top:6px"
+        >
+          La chat resta legata a questo evento,
+          non è una chat generale.
+        </p>
+
+
+        <button
+          class="secondary-button compact"
+          id="fake-chat"
+          style="margin-top:10px"
+        >
+          Apri chat evento
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="primary-button"
+        data-action="close-modal"
+      >
+        Chiudi
+      </button>
+
+    </div>
+
+  `);
+
+
+  if ($("fake-chat")) {
+
+    $("fake-chat")
+      .onclick = () => {
+
+        openEventChat(
+          event
+        );
+      };
+  }
 }
 
+
+/* =========================================================
+   EVENT CHAT — LOCAL DEMO
+   ========================================================= */
+
+function openEventChat(
+  event
+) {
+
+  if (!Array.isArray(event.messages))
+    event.messages = [];
+
+
+  openModal(`
+
+    <h2>
+      Chat · ${esc(event.title)}
+    </h2>
+
+    <p class="modal-subtitle">
+      Chat temporanea legata a questo programma.
+    </p>
+
+
+    <div
+      id="event-chat-messages"
+      style="
+        display:grid;
+        gap:8px;
+        margin-bottom:14px;
+      "
+    >
+
+      ${
+        event.messages.length
+
+          ? event.messages
+              .map(
+                message =>
+                  `
+                  <div
+                    class="info-card"
+                    style="margin-top:0"
+                  >
+
+                    <div>
+
+                      <strong>
+                        ${esc(message.author)}
+                      </strong>
+
+                      <p>
+                        ${esc(message.text)}
+                      </p>
+
+                    </div>
+
+                  </div>
+                  `
+              )
+              .join("")
+
+          : `
+            <div class="empty-state">
+              Nessun messaggio ancora.
+            </div>
+            `
+      }
+
+    </div>
+
+
+    <form
+      id="event-chat-form"
+      class="modal-form"
+    >
+
+      <label>
+        Messaggio
+      </label>
+
+      <input
+        name="message"
+        placeholder="Scrivi qualcosa..."
+        required
+      >
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="close-modal"
+        >
+          Chiudi
+        </button>
+
+        <button
+          class="primary-button"
+        >
+          Invia
+        </button>
+
+      </div>
+
+    </form>
+
+  `);
+
+
+  $("event-chat-form")
+    .addEventListener(
+      "submit",
+      formEvent => {
+
+        formEvent.preventDefault();
+
+
+        const data =
+          new FormData(
+            formEvent.target
+          );
+
+
+        const text =
+          String(
+            data.get("message")
+          )
+          .trim();
+
+
+        if (!text)
+          return;
+
+
+        event.messages.push({
+
+          id: uid("msg"),
+
+          author:
+            state.currentUser.displayName,
+
+          text,
+
+          date:
+            new Date().toISOString()
+        });
+
+
+        saveData();
+
+        openEventChat(
+          event
+        );
+      }
+    );
+}
+
+
+/* =========================================================
+   SEARCH
+   ========================================================= */
+
+function searchPeople(
+  query
+) {
+
+  query =
+    query
+      .trim()
+      .toLowerCase();
+
+
+  if (!query) {
+
+    $("search-results")
+      .innerHTML =
+      `
+      <div class="empty-state">
+        Cerca un nome, username o una persona.
+      </div>
+      `;
+
+    return;
+  }
+
+
+  const people =
+    state.data.friends
+      .filter(
+        friend =>
+          friend.name
+            .toLowerCase()
+            .includes(query) ||
+          friend.username
+            .toLowerCase()
+            .includes(query)
+      );
+
+
+  $("search-results")
+    .innerHTML =
+      people.length
+
+        ? people
+            .map(
+              friend =>
+                `
+                <div class="person-card">
+
+                  <div class="person-avatar">
+                    ${friend.avatar}
+                  </div>
+
+                  <div class="person-info">
+
+                    <strong>
+                      ${esc(friend.name)}
+                    </strong>
+
+                    <span>
+                      ${esc(friend.username)}
+                    </span>
+
+                  </div>
+
+                </div>
+                `
+            )
+            .join("")
+
+        : `
+          <div class="empty-state">
+            Nessun amico trovato.
+            Premi Invio per cercare anche sul web.
+          </div>
+          `;
+}
+
+
+/* =========================================================
+   WEB SEARCH
+   ========================================================= */
+
+async function runWebSearch(
+  query
+) {
+
+  query =
+    query.trim();
+
+
+  if (!query)
+    return;
+
+
+  $("search-results")
+    .innerHTML =
+    `
+    <div class="empty-state">
+      🔎 Cerco sul web...
+    </div>
+    `;
+
+
+  try {
+
+    const response =
+      await fetch(
+        WORKER_SEARCH_URL,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              query
+            })
+        }
+      );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "Servizio di ricerca non disponibile."
+      );
+    }
+
+
+    const data =
+      await response.json();
+
+
+    if (!data.success) {
+
+      throw new Error(
+        data.error ||
+        "Errore di ricerca."
+      );
+    }
+
+
+    state.data.lastSearch =
+      data.results || [];
+
+
+    saveData();
+
+
+    $("search-results")
+      .innerHTML =
+        (data.results || [])
+          .map(
+            result =>
+              `
+              <article class="result-card">
+
+                <div class="result-source">
+                  ${esc(result.source)}
+                </div>
+
+                <a
+                  href="${esc(result.url)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ${esc(result.title)}
+                </a>
+
+                <p>
+                  ${esc(result.description)}
+                </p>
+
+              </article>
+              `
+          )
+          .join("")
+        ||
+          `
+          <div class="empty-state">
+            Nessun risultato.
+          </div>
+          `;
+
+  } catch (error) {
+
+    $("search-results")
+      .innerHTML =
+      `
+      <div class="empty-state">
+
+        Non riesco a raggiungere
+        la ricerca adesso.
+
+        <br>
+
+        <small>
+          ${esc(error.message)}
+        </small>
+
+      </div>
+      `;
+  }
+}
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+function toast(
+  message
+) {
+
+  const element =
+    document.createElement(
+      "div"
+    );
+
+
+  element.className =
+    "toast";
+
+
+  element.textContent =
+    message;
+
+
+  $("toast-container")
+    .appendChild(
+      element
+    );
+
+
+  setTimeout(
+    () =>
+      element.remove(),
+    3000
+  );
+}
+
+
+/* =========================================================
+   STORAGE SYNC
+   ========================================================= */
+
+window.addEventListener(
+  "storage",
+  () => {
+
+    state.data =
+      loadJSON(
+        KEYS.data,
+        state.data
+      );
+
+    renderAll();
+  }
+);
+
+
+/* =========================================================
+   SYSTEM THEME CHANGES
+   ========================================================= */
+
+window
+  .matchMedia(
+    "(prefers-color-scheme: dark)"
+  )
+  .addEventListener(
+    "change",
+    () => {
+
+      if (
+        state.theme ===
+        "system"
+      ) {
+
+        applyTheme();
+      }
+    }
+  );
+
+
+/* =========================================================
+   START
+   ========================================================= */
+
 document.addEventListener(
-    "DOMContentLoaded",
-    init
+  "DOMContentLoaded",
+  init
 );
